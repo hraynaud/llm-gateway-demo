@@ -12,13 +12,12 @@ module OllamaService
       )
     end
 
-    def create_embedding(prompt, model = 'llama2')
+    def create_embedding(prompt, model = 'nomic-embed-text')
       embeds = client.embeddings(
         { model:, prompt: }
       )
-      embeds[0]['embeddding']
+      embeds[0]['embedding']
     end
-    handle_asynchronously :create_embedding, queue: 'embeddings'
   end
   class << self
     def create_embedding(prompt)
