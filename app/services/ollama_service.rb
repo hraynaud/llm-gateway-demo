@@ -12,7 +12,7 @@ module OllamaService
       )
     end
 
-    def create_embedding(prompt, model = 'nomic-embed-text')
+    def create_embedding(prompt, model = 'all-minilm')
       embeds = client.embeddings(
         { model:, prompt: }
       )
