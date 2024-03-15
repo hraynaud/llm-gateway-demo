@@ -12,17 +12,26 @@ module OllamaService
       )
     end
 
-    def create_embedding(prompt, model = 'all-minilm')
+    def embedding(prompt, model)
       embeds = client.embeddings(
         { model:, prompt: }
       )
       embeds[0]['embedding']
     end
+
+    def completion(prompt, model)
+      client.generate(
+        { model:, prompt:, stream: false }
+      )
+    end
   end
   class << self
-    def create_embedding(prompt)
-      client = OllamaService::Client.instance
-      client.create_embedding(prompt)
+    def embedding(prompt, model = 'all-minilm')
+      Client.instance.embedding(prompt, model)
+    end
+
+    def completion(prompt, model = 'llama2')
+      Client.instance.completion(prompt, model)
     end
   end
 end
