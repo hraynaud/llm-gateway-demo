@@ -33,5 +33,14 @@ module OllamaService
     def completion(prompt, model = 'llama2')
       Client.instance.completion(prompt, model)
     end
+
+    def parse_completion(completion)
+      resp = completion[0]['response']
+      data = JSON.parse(resp)
+
+      terms = data['terms'].join(',')
+      Rails.logger.debug "like terms: #{terms}"
+      "#{terms}"
+    end
   end
 end
