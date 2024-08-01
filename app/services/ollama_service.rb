@@ -30,7 +30,7 @@ module OllamaService
       Client.instance.embedding(prompt, model)
     end
 
-    def completion(prompt, model = 'llama2')
+    def completion(prompt, model = 'llama3')
       Client.instance.completion(prompt, model)
     end
 
