@@ -36,11 +36,7 @@ module OllamaService
 
     def parse_completion(completion)
       resp = completion[0]['response']
-      data = JSON.parse(resp)
-
-      terms = data['terms'].join(',')
-      Rails.logger.debug "like terms: #{terms}"
-      "#{terms}"
+      JSON.parse(resp).with_indifferent_access
     end
   end
 end
