@@ -26,7 +26,7 @@ module OllamaService
     end
   end
   class << self
-    def embedding(prompt, model = 'all-minilm')
+    def embedding(prompt, model = 'mxbai-embed-large')
       Client.instance.embedding(prompt, model)
     end
 
