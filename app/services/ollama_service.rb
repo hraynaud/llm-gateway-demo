@@ -5,9 +5,11 @@ module OllamaService
     include Singleton
     attr_reader :client
 
+    # ENV.fetch('OLLAMA_SERVER_ADDRESS', 'http://ollama:11434')
+
     def initialize
       @client = Ollama.new(
-        credentials: { address: 'http://localhost:11434' },
+        credentials: { address: 'http://ollama:11434' },
         options: { server_sent_events: true }
       )
     end
