@@ -1,15 +1,16 @@
 require 'ollama-ai'
 
 module OllamaService
+  EMBEDDING_MODEL = ENV.fetch('EMBEDDING_MODEL', 'mxbai-embed-large')
+  LLM = ENV.fetch('LLM', 'llama3')
+  OLLAMA_SERVER_ADDRESS = ENV.fetch('OLLAMA_SERVER_ADDRESS', 'http://ollama:11434')
   class Client
     include Singleton
     attr_reader :client
 
-    # ENV.fetch('OLLAMA_SERVER_ADDRESS', 'http://ollama:11434')
-
     def initialize
       @client = Ollama.new(
-        credentials: { address: 'http://localhost:11434' },
+        credentials: { address: OLLAMA_SERVER_ADDRESS },
         options: { server_sent_events: true }
       )
     end
@@ -26,14 +27,27 @@ module OllamaService
         { model:, prompt:, stream: false }
       )
     end
+
+    def chat(messages, model)
+      Enumerator.new do |yielder|
+        client.chat({ messages:, model:, stream: true }) do |event|
+          yielder << event
+        end
+      end
+    end
   end
+
   class << self
-    def embedding(prompt, model = 'mxbai-embed-large')
+    def embedding(prompt, model = EMBEDDING_MODEL)
       Client.instance.embedding(prompt, model)
     end
 
-    def completion(prompt, model = 'llama3')
+    def completion(prompt, model = LLM)
       Client.instance.completion(prompt, model)
+    end
+
+    def chat(messages, model = LLM)
+      Client.instance.chat(messages, model)
     end
 
     def parse_completion(completion)
