@@ -54,8 +54,8 @@ She is also skilled in karate and has interests in pottery and jazz music and yo
   class << self
     def search(search)
       search_prompt = "#{SEARCH_PROMPT} \n __\n ### #{search} \n"
-      completion = OllamaService.completion(search_prompt)
-      OllamaService.parse_completion completion
+      completion = AiService.completion(search_prompt)
+      AiService.parse_completion completion
     end
   end
 end

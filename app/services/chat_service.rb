@@ -21,7 +21,7 @@ class ChatService
     messages.unshift(system_msg)
 
     # Return the stream directly
-    stream = OllamaService.chat(messages)
+    stream = AiService.chat(messages)
 
     # Capture the full response for chat history
     full_response = ''
@@ -52,7 +52,7 @@ class ChatService
     history_with_prompt.unshift(summary_msg)
 
     # For summarization, we don't need to stream
-    summary_response = OllamaService.completion(history_with_prompt.to_json)
+    summary_response = AiService.completion(history_with_prompt.to_json)
     summary_text = summary_response['response'] || summary_response[0]['response']
 
     Rails.logger.debug("Summary of previous conversation: #{summary_text}")

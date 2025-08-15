@@ -1,11 +1,15 @@
 require 'ollama-ai'
 
 module OllamaService
+  include AiProviderInterface
+
   EMBEDDING_MODEL = ENV.fetch('EMBEDDING_MODEL', 'mxbai-embed-large')
   LLM = ENV.fetch('LLM', 'llama3')
   OLLAMA_SERVER_ADDRESS = ENV.fetch('OLLAMA_SERVER_ADDRESS', 'http://ollama:11434')
+
   class Client
     include Singleton
+
     attr_reader :client
 
     def initialize
@@ -53,6 +57,8 @@ module OllamaService
     def parse_completion(completion)
       resp = completion[0]['response']
       JSON.parse(resp).with_indifferent_access
+    rescue JSON::ParserError
+      { content: resp }.with_indifferent_access
     end
   end
 end
