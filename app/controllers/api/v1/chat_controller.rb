@@ -5,9 +5,21 @@ module Api
 
       def create
         message = msg_params[:message]
-        response = ChatService.new.chat_non_streaming(message)
+        mode = msg_params[:mode]&.to_sym
+        history = msg_params[:history] || []
 
-        render json: { data: response }
+        if mode && %i[project onboarding].include?(mode)
+          # Use AI Assistant for project wizard or onboarding
+          ai_assistant = AiAssistant.new(mode)
+          response = ai_assistant.chat(message, history)
+
+          render json: { text: response }
+
+        else
+          # Use existing chat service for general chat
+          response = ChatService.new.chat_non_streaming(message)
+          render json: { data: response }
+        end
       end
 
       # New streaming endpoint
@@ -44,7 +56,7 @@ module Api
       private
 
       def msg_params
-        params.permit(:message)
+        params.permit(:message, :mode, :history)
       end
     end
   end

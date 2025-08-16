@@ -44,6 +44,32 @@ class ChatService
     end
   end
 
+  def chat_non_streaming(user_input)
+    @chat_history << { 'role' => 'user', 'content' => user_input }
+    system_msg = { 'role' => 'system', 'content' => @system_prompt }
+    @chat_history = summarize_chat(@chat_history) if @chat_history.size > MAX_HISTORY_SIZE
+
+    messages = @chat_history.dup
+    messages.unshift(system_msg)
+
+    # Get non-streaming response
+    response = AiService.completion(messages.to_json)
+
+    # Extract response text
+    response_text = if response['response']
+                      response['response']
+                    elsif response[0] && response[0]['response']
+                      response[0]['response']
+                    else
+                      response.to_s
+                    end
+
+    # Add to chat history
+    @chat_history << { 'role' => 'assistant', 'content' => response_text }
+
+    response_text
+  end
+
   private
 
   def summarize_chat(history)
