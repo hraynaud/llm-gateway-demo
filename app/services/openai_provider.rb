@@ -64,8 +64,7 @@ module OpenaiProvider
         # In production, you might want to implement proper streaming
         response = Client.instance.post('v1/chat/completions', {
                                           model: model,
-                                          messages: messages,
-                                          temperature: 0.7
+                                          messages: messages
                                         })
 
         yielder << response
