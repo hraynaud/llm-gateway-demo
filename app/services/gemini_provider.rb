@@ -51,24 +51,35 @@ module GeminiProvider
     end
 
     def completion(prompt, model = ENV['GEMINI_LLM'] || 'gemini-2.5-flash')
-      Client.instance.post("/v1/models/#{model}:generateContent", {
+      Client.instance.post("/v1beta/models/#{model}:generateContent", {
                              contents: [{
                                parts: [{ text: prompt }]
                              }]
                            })
     end
 
-    def chat(messages, model = ENV['GEMINI_LLM'] || 'gemini-2.5-flash')
+    def chat(messages, system_instruction = nil)
+      # Remove any system messages from the contents since we'll use systemInstruction
+      contents = messages.reject { |msg| msg[:role] == 'system' }
+                         .map { |msg| { role: msg[:role], parts: [{ text: msg[:content] }] } }
+
+      # Build the request payload
+      request_data = {
+        contents: contents
+      }
+
+      model = ENV['GEMINI_LLM'] || 'gemini-2.5-flash'
+
+      # Add system instruction in the correct format
+      if system_instruction
+        request_data[:system_instruction] = {
+          parts: [{ text: system_instruction }]
+        }
+      end
+      response = Client.instance.post("/v1beta/models/#{model}:generateContent", request_data)
+
+      # Return as enumerator for consistency with other providers
       Enumerator.new do |yielder|
-        # Convert messages to Gemini format
-        gemini_messages = messages.map do |msg|
-          { role: msg[:role], parts: [{ text: msg[:content] }] }
-        end
-
-        response = Client.instance.post("/v1/models/#{model}:generateContent", {
-                                          contents: gemini_messages
-                                        })
-
         yielder << response
       end
     end
