@@ -15,7 +15,7 @@ module Api
       private
 
       def msg_params
-        params.permit(:message, history: %i[role content])
+        params.permit(:message, :mode, history: %i[role content])
       end
     end
   end
