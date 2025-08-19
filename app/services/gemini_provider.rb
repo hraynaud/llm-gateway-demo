@@ -45,34 +45,28 @@ module GeminiProvider
   class Bot
     class << self
       def chat(messages, system_instruction = nil)
-        # Remove any system messages from the contents since we'll use systemInstruction
-        contents = messages.reject { |msg| msg[:role] == 'system' }
-                           .map { |msg| { role: msg[:role], parts: [{ text: msg[:content] }] } }
-
-        # Build the request payload
-        request_data = {
-          contents: contents
-        }
-
-        # Add system instruction in the correct format
-        if system_instruction
-          request_data[:system_instruction] = {
-            parts: [{ text: system_instruction }]
-          }
-        end
-
+        request_data = to_gemini_format(messages, system_instruction)
         response = Client.instance.post(request_data)
-
         # Return as enumerator for consistency with other providers
         Enumerator.new do |yielder|
           yielder << response
         end
       end
 
+      def to_gemini_format(messages, system_instruction)
+        contents = messages.map { |msg| { role: msg[:role], parts: [{ text: msg[:content] }] } }
+        request_data = { contents: contents }
+        if system_instruction
+          request_data[:system_instruction] = {
+            parts: [{ text: system_instruction }]
+          }
+        end
+
+        request_data
+      end
+
       def completion(prompt)
-        model = ENV['GEMINI_LLM'] || 'gemini-2.5-flash'
-        url = api_url(model)
-        Client.instance.post(url, {
+        Client.instance.post({
                                contents: [{
                                  parts: [{ text: prompt }]
                                }]

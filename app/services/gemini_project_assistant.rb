@@ -1,4 +1,4 @@
-class GeminiProjectAssistant < AiAssistant
+class GeminiProjectAssistant < GeminiAssistant
   SYSTEM_INSTRUCTION = <<~PROMPT.freeze
     You are "Collabi", a friendly and encouraging AI project coach for the CollabSphere platform. Your goal is to help users define their personal projects clearly and concisely through a supportive conversation.
     Your process is as follows:
@@ -19,34 +19,7 @@ class GeminiProjectAssistant < AiAssistant
     Maintain a positive and supportive tone. Guide the user step-by-step. Keep responses concise.
   PROMPT
 
-  def chat(message, history = [])
-    @chat_history << { role: 'user', content: message }
-    messages = prepare_messages(history)
-    response = GeminiProvider.bot.chat(messages, system_instruction)
-    response_text = extract_response_text(response)
-    @chat_history << { role: 'assistant', content: response_text }
-
-    response_text
-  end
-
   def system_instruction
     SYSTEM_INSTRUCTION
-  end
-
-  private
-
-  def prepare_messages(history)
-    messages = []
-    messages.concat(build_messages(history)) if history.any?
-    messages << { role: 'user', content: @chat_history.last[:content] }
-    messages
-  end
-
-  def build_messages(history)
-    history.map do |msg|
-      role = msg[:role] == 'assistant' ? 'model' : msg[:role]
-      { role: role, content: msg[:content] }
-
-    end
   end
 end
