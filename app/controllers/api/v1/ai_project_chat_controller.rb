@@ -6,7 +6,7 @@ module Api
       def create
         message = msg_params[:message]
         history = msg_params[:history] || []
-        ai_assistant = GeminiProjectAssistant.new
+        ai_assistant = AiService.project_assistant
         response = ai_assistant.chat(message, history)
 
         render json: { text: response }

@@ -22,21 +22,22 @@ class GeminiProjectAssistant < AiAssistant
   def chat(message, history = [])
     @chat_history << { role: 'user', content: message }
     messages = prepare_messages(history)
-    response = GeminiProvider.chat(messages, SYSTEM_INSTRUCTION)
+    response = GeminiProvider.chat(messages, system_instruction)
     response_text = extract_response_text(response)
     @chat_history << { role: 'assistant', content: response_text }
 
     response_text
   end
 
+  def system_instruction
+    SYSTEM_INSTRUCTION
+  end
+
   private
 
   def prepare_messages(history)
     messages = []
-    # Add conversation history if provided
     messages.concat(build_messages(history)) if history.any?
-
-    # Add current user message
     messages << { role: 'user', content: @chat_history.last[:content] }
     messages
   end

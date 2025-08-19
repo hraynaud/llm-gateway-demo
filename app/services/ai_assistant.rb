@@ -106,61 +106,8 @@ class AiAssistant
     Remember: Start responses immediately with your message. No greetings, no reintroductions.
   PROMPT
 
-  MODES = {
-    project: {
-      gemini: PROJECT_WIZARD_SYSTEM_INSTRUCTION_GEMINI,
-      gpt: PROJECT_WIZARD_SYSTEM_INSTRUCTION_GPT
-    },
-    onboarding: {
-      gemini: ONBOARDING_SYSTEM_INSTRUCTION_GEMINI,
-      gpt: ONBOARDING_SYSTEM_INSTRUCTION_GPT
-    }
-  }.freeze
-
-  def initialize(mode = :project, model_type = nil)
-    @mode = mode.to_sym
+  def initialize
     @chat_history = []
-
-    # Auto-detect model type if not specified
-    @model_type = model_type&.to_sym || detect_model_type
-
-    raise ArgumentError, "Invalid mode: #{@mode}. Valid modes are: #{MODES.keys.join(', ')}" unless MODES.key?(@mode)
-
-    return if MODES[@mode].key?(@model_type)
-
-    raise ArgumentError,
-          "Invalid model type: #{@model_type}. Valid types for #{@mode} are: #{MODES[@mode].keys.join(', ')}"
-  end
-
-  def chat(message, history = [])
-    # Add user message to history
-    @chat_history << { role: 'user', content: message }
-
-    # Prepare messages for AI service (without system instruction)
-    messages = prepare_messages(history)
-
-    # Get the system instruction separately
-    system_instruction = MODES[@mode][@model_type]
-
-    # Switch provider if needed
-    AiService.switch_provider('gemini') if @model_type == :gemini
-
-    # Get response from AI service with system instruction
-    response = if @model_type == :gemini
-                 # For Gemini, pass system instruction separately
-                 AiService.provider.chat(messages, system_instruction)
-               else
-                 # For other providers, include system instruction in messages
-                 AiService.chat(messages)
-               end
-
-    # Extract the response text
-    response_text = extract_response_text(response)
-
-    # Add AI response to history
-    @chat_history << { role: 'assistant', content: response_text }
-
-    response_text
   end
 
   def reset
@@ -171,44 +118,7 @@ class AiAssistant
     @chat_history.dup
   end
 
-  attr_reader :model_type
-
   private
-
-  def detect_model_type
-    # Auto-detect based on current AI service provider
-    case AiService.current_provider
-    when 'openai'
-      :gpt
-    when 'gemini'
-      :gemini
-    else
-      :gemini # Default to gemini for ollama or unknown providers
-    end
-  end
-
-  def prepare_messages(history)
-    # Don't include system instruction in messages for Gemini
-    messages = []
-
-    # Add conversation history if provided
-    if history.any?
-      messages.concat(history.map do |msg|
-        if @model_type == :gemini
-          # Map 'assistant' to 'model' for Gemini
-          role = msg[:role] == 'assistant' ? 'model' : msg[:role]
-          { role: role, content: msg[:content] }
-        else
-          { role: msg[:role], content: msg[:content] }
-        end
-      end)
-    end
-
-    # Add current user message
-    messages << { role: 'user', content: @chat_history.last[:content] }
-
-    messages
-  end
 
   def extract_response_text(response)
     # Handle different response formats from different providers

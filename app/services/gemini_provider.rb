@@ -2,8 +2,6 @@ require 'net/http'
 require 'json'
 
 module GeminiProvider
-  include AiProviderInterface
-
   class Client
     include Singleton
 
@@ -17,7 +15,6 @@ module GeminiProvider
     def post(endpoint, data)
       http = build_http_connection(endpoint)
       request = build_request(endpoint, data)
-
       response = http.request(request)
       raise "Gemini API error: #{response.code} - #{response.body}" if response.code.to_i >= 400
 
@@ -43,15 +40,10 @@ module GeminiProvider
   end
 
   class << self
-    def embedding(prompt, model = ENV.fetch('GEMINI_EMBEDDING_MODEL', 'embedding-001'))
-      # NOTE: Gemini doesn't have a direct embedding API like OpenAI
-      # You might need to use a different service for embeddings
-      # For now, we'll raise an error
-      raise NotImplementedError, "Gemini doesn't support embeddings directly. Use OpenAI or Ollama for embeddings."
-    end
-
-    def completion(prompt, model = ENV['GEMINI_LLM'] || 'gemini-2.5-flash')
-      Client.instance.post("/v1beta/models/#{model}:generateContent", {
+    def completion(prompt)
+      model = ENV['GEMINI_LLM'] || 'gemini-2.5-flash'
+      url = api_url(model)
+      Client.instance.post(url, {
                              contents: [{
                                parts: [{ text: prompt }]
                              }]
@@ -69,14 +61,15 @@ module GeminiProvider
       }
 
       model = ENV['GEMINI_LLM'] || 'gemini-2.5-flash'
-
+      url = api_url(model)
       # Add system instruction in the correct format
       if system_instruction
         request_data[:system_instruction] = {
           parts: [{ text: system_instruction }]
         }
       end
-      response = Client.instance.post("/v1beta/models/#{model}:generateContent", request_data)
+
+      response = Client.instance.post(url, request_data)
 
       # Return as enumerator for consistency with other providers
       Enumerator.new do |yielder|
@@ -89,6 +82,10 @@ module GeminiProvider
       JSON.parse(resp).with_indifferent_access
     rescue JSON::ParserError
       { content: resp }.with_indifferent_access
+    end
+
+    def api_url(model)
+      "/v1beta/models/#{model}:generateContent"
     end
   end
 end

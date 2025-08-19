@@ -19,6 +19,10 @@ module AiService
       end
     end
 
+    def project_assistant
+      GeminiProjectAssistant.new
+    end
+
     def completion(prompt, model = nil)
       if model
         provider.completion(prompt, model)
