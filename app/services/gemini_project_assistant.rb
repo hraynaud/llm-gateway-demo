@@ -22,7 +22,7 @@ class GeminiProjectAssistant < AiAssistant
   def chat(message, history = [])
     @chat_history << { role: 'user', content: message }
     messages = prepare_messages(history)
-    response = GeminiProvider.chat(messages, system_instruction)
+    response = GeminiProvider.bot.chat(messages, system_instruction)
     response_text = extract_response_text(response)
     @chat_history << { role: 'assistant', content: response_text }
 
