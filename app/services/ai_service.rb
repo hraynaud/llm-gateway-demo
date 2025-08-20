@@ -11,16 +11,22 @@ module AiService
                     end
     end
 
+    # TODO: derive from configuration
+    def project_assistant
+      GeminiProjectAssistant.new
+    end
+
+    # TODO: derive from configuration
+    def onboarding_assistant
+      GeminiOnboardingAssistant.new
+    end
+
     def embedding(prompt, model = nil)
       if model
         provider.embedding(prompt, model)
       else
         provider.embedding(prompt)
       end
-    end
-
-    def project_assistant
-      GeminiProjectAssistant.new
     end
 
     def completion(prompt, model = nil)
