@@ -7,11 +7,13 @@ module OpenaiProvider
   class Client
     include Singleton
 
-    attr_reader :api_key, :base_url
+    attr_reader :api_key, :base_url, :api_url
 
     def initialize
       @api_key = ENV.fetch('OPENAI_API_KEY')
       @base_url = ENV.fetch('OPENAI_URI_BASE', 'https://api.openai.com/')
+      @model = ENV['OPENAI_LLM'] || 'gpt-4o'
+      @api_url = "/v1beta/models/#{@model}:generateContent"
     end
 
     def post(endpoint, data)
