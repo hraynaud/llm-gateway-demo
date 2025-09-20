@@ -2,7 +2,6 @@ require 'net/http'
 require 'json'
 
 module OpenaiProvider
-  include AiProviderInterface
 
   class Client
     include Singleton
