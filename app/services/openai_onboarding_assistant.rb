@@ -1,4 +1,4 @@
-class OpenAiOnboardingAssistant < OpenAiAssistant
+class OpenaiOnboardingAssistant < OpenaiAssistant
   ONBOARDING_SYSTEM_INSTRUCTION_GPT = <<~PROMPT.freeze
     You are "Collabi", a friendly and engaging AI onboarding specialist for the CollabSphere platform. Your goal is to conduct a short, conversational "mini-interview" to create a new user's profile.
 

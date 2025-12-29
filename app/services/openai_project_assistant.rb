@@ -1,4 +1,4 @@
-class OpenAiProjectAssistant < OpenAiAssistant
+class OpenaiProjectAssistant < OpenaiAssistant
   PROJECT_WIZARD_SYSTEM_INSTRUCTION_GPT = <<~PROMPT.freeze
     You are "Collabi", a friendly and encouraging AI project coach for the CollabSphere platform. Your goal is to help users define their personal projects clearly and concisely through a supportive conversation.
 

@@ -1,7 +1,6 @@
 require 'ollama-ai'
 
 module OllamaService
-  include AiProviderInterface
 
   EMBEDDING_MODEL = ENV.fetch('EMBEDDING_MODEL', 'mxbai-embed-large')
   LLM = ENV.fetch('LLM', 'llama3')

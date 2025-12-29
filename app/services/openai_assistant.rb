@@ -1,4 +1,4 @@
-class OpenAiAssistant < AiAssistant
+class OpenaiAssistant < AiAssistant
   def chat(message, history = [])
     @chat_history << { role: 'user', content: message }
     messages = prepare_messages(history)
