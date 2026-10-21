@@ -1,0 +1,22 @@
+[
+  { "name": "Mara Okonkwo", "bio": "I teach vinyasa three mornings a week and lead a breathwork session on Sundays." },
+  { "name": "Tomasz Wierzbicki", "bio": "I throw stoneware on the wheel and share a kiln with two friends in a converted garage." },
+  { "name": "Lucía Ferreira", "bio": "Former youth karate champion. These days I coach kids' sparring on weekends." },
+  { "name": "Dev Raman", "bio": "I build Rails APIs for a logistics startup and maintain a couple of open-source gems." },
+  { "name": "Aiyana Brooks", "bio": "Licensed electrician. I rewire old row houses and install solar inverters." },
+  { "name": "Henrik Lund", "bio": "I restore mid-century furniture: veneer repair, French polish and reupholstery." },
+  { "name": "Priya Natarajan", "bio": "Clinical dietitian. I write meal plans for people managing type 2 diabetes." },
+  { "name": "Samuel Adeyemi", "bio": "I play upright bass in a jazz trio and teach music theory at a community school." },
+  { "name": "Chen Wei", "bio": "I prepare small-business tax returns and help freelancers set up their bookkeeping." },
+  { "name": "Rosa Delgado", "bio": "I've run tenant meetings for years and negotiated with landlords to get repairs done." },
+  { "name": "Ibrahim Haddad", "bio": "I translate Arabic and French legal documents and interpret at immigration hearings." },
+  { "name": "Elena Petrova", "bio": "Landscape architect focused on stormwater gardens and native planting for city lots." },
+  { "name": "Jonah Whitfield", "bio": "I fix bikes at a co-op and lead group rides for people new to commuting." },
+  { "name": "Fatima Zahra", "bio": "UX researcher. I run usability interviews and turn the findings into product roadmaps." },
+  { "name": "Kofi Mensah", "bio": "High-school chemistry teacher who coaches the science olympiad team." },
+  { "name": "Grace Liu", "bio": "I bake sourdough and laminate croissant dough for a weekend farmers' market stall." },
+  { "name": "Mateo Rossi", "bio": "Spent a decade as a paramedic; now I teach CPR and wilderness first aid." },
+  { "name": "Nadia Karimi", "bio": "I knit, spin my own yarn and dye it with plants from my garden." },
+  { "name": "Oliver Grant", "bio": "I write grant proposals for arts nonprofits and have won foundation and city funding." },
+  { "name": "Yuki Tanaka", "bio": "I race dinghies on weekends and teach beginners rigging and knot-tying." }
+]
