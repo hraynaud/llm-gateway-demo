@@ -16,15 +16,15 @@ bin/onboard                # needs a local Ollama (see "Run it")
 
 Dates and commit messages are from the original history, which is preserved here.
 
-| Date | Commit | Step |
-|---|---|---|
-| 2024-02-15 | `490151c` | First LLM call: `OllamaService` against a local model |
-| 2024-02-24 | `3e83973` | Embeddings and RAG-style semantic search (the search code is not included) |
-| 2025-01-10 | `ee0c5dc` | `SummarizerService`: an LLM prompt that enriches profiles with related terms before indexing |
-| 2025-04-19 | `8f9b354` | Chat on projects |
-| 2025-08-15 | `1036002` | `AiService` provider factory: Ollama, OpenAI and Gemini behind one interface |
-| 2025-08-15 | `87466dc` | The Collabi project and onboarding assistants |
-| 2025-09-07 | `8871f4f` | AI onboarding working end to end |
+| Date | Commit | Commit message | Step |
+|---|---|---|---|
+| 2024-02-15 | `490151c` | wip_introducing llama | First LLM call: `OllamaService` against a local model |
+| 2024-02-24 | `3e83973` | Adds RAG search capability to endorsements search | Embeddings and RAG-style semantic search (the search code is not included) |
+| 2025-01-10 | `ee0c5dc` | adds topic and summary services | `SummarizerService`: an LLM prompt that enriches profiles with related terms before indexing |
+| 2025-04-19 | `8f9b354` | adds chat to projects | Chat on projects |
+| 2025-08-15 | `1036002` | Implements AI provider factory to switch between AI services | `AiService` provider factory: Ollama, OpenAI and Gemini behind one interface |
+| 2025-08-15 | `87466dc` | adds project and onboarding assitants | The Collabi project and onboarding assistants |
+| 2025-09-07 | `8871f4f` | ai onboarding working | AI onboarding working end to end |
 
 ## Design
 
@@ -52,16 +52,31 @@ person never wrote down. `bin/search` demonstrates this over invented profiles, 
 
 ## Run it
 
-1. **Specs only.** Ruby and `bundle install`; nothing else to install.
+1. **Specs only.** Ruby 4.0.1 (pinned in `.ruby-version`; the Gemfile allows >= 3.2, which is untested) and `bundle install`; nothing else to install.
 2. **Local Ollama (free, no key).** `brew install ollama && ollama serve`, then
    `ollama pull llama3 && ollama pull mxbai-embed-large`. Other models work:
    `LLM=qwen2:7b EMBEDDING_MODEL=nomic-embed-text bin/chat`.
 3. **Hosted provider.** `AI_PROVIDER=gemini GEMINI_API_KEY=… bin/onboard`, or
    `AI_PROVIDER=openai OPENAI_API_KEY=… bin/search "someone into pilates"`.
 
+Environment variables (all optional for local Ollama):
+
+| Variable | Default | Used for |
+|---|---|---|
+| `AI_PROVIDER` | `ollama` | `ollama`, `openai` or `gemini` |
+| `LLM` | `llama3` | Ollama chat/completion model |
+| `EMBEDDING_MODEL` | `mxbai-embed-large` | Ollama embedding model |
+| `OLLAMA_SERVER_ADDRESS` | `http://localhost:11434` (set by `config/boot.rb`; the service itself defaults to `http://ollama:11434`) | Ollama URL |
+| `GEMINI_API_KEY` | none, required for Gemini | Gemini auth |
+| `GEMINI_LLM` | `gemini-2.5-flash` | Gemini model |
+| `OPENAI_API_KEY` | none, required for OpenAI | OpenAI auth |
+| `OPENAI_LLM` | `gpt-5-mini` (the model sent with each request) | OpenAI model |
+| `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embeddings |
+| `LOG_LEVEL` | `warn` (`bin/chat` uses `debug` unless you set it) | Log verbosity |
+
 | Script | Shows |
 |---|---|
-| `bin/chat` | Rolling memory; `[debug]` lines show each summarisation |
+| `bin/chat` | Rolling memory; `"[debug] Summary of previous conversation"` lines show each summarisation |
 | `bin/onboard` | The onboarding interview; prints the extracted `<user_data>` JSON |
 | `bin/search QUERY [--compare]` | Enrichment-based search over `demo/people.json` |
 
@@ -74,7 +89,7 @@ tells you when the block isn't valid JSON.
 2026 with AI assistance, following the spec and plan in `docs/`:
 
 - `config/boot.rb`, a small shell that lets the Rails services run as plain Ruby.
-- Six fixes to latent bugs, in `fix:` commits, each with the spec that caught it.
+- Six fixes to latent bugs (seven `fix:` commits; one needed a follow-up), each with the spec that caught it.
 - Ollama adapters for the assistants, the `demo/` search, the `bin/` scripts and the test suite.
 
 ## Known limits
