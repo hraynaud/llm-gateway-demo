@@ -65,22 +65,7 @@ Your process is as follows:
   "getSmarterAbout": ["topic1", "subject2"]
 }
 </user_data>
-Maintain a positive, step-by-step conversation. Always format the summary cleanly with proper spacing and structure.`;
-
-const instructions = {
-  project: projectWizardSystemInstruction,
-  onboarding: onboardingSystemInstruction,
-};
-
-// Type guard to ensure mode is a valid key
-function isValidMode(mode: any): mode is keyof typeof instructions {
-    return mode === 'project' || mode === 'onboarding';
-}
-
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse,
-) {
+Maintain a positive, step-by-step conversation. Always format the summary cleanly with proper spacing and structure.
   PROMPT
 
 
