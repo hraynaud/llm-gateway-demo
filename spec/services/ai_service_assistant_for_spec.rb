@@ -26,4 +26,8 @@ RSpec.describe AiService, '.assistant_for' do
   it 'raises ArgumentError for a nil mode' do
     expect { AiService.assistant_for(nil) }.to raise_error(ArgumentError)
   end
+
+  it 'raises ArgumentError for a non-string, non-symbol mode' do
+    expect { AiService.assistant_for(5) }.to raise_error(ArgumentError)
+  end
 end

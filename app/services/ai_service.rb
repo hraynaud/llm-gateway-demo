@@ -22,10 +22,10 @@ module AiService
     end
 
     def assistant_for(mode)
-      case mode&.to_sym
-      when :project
+      case mode.to_s
+      when 'project'
         project_assistant
-      when :onboarding
+      when 'onboarding'
         onboarding_assistant
       else
         raise ArgumentError, "Unknown assistant mode: #{mode.inspect}"
