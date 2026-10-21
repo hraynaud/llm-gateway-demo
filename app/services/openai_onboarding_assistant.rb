@@ -32,6 +32,6 @@ class OpenaiOnboardingAssistant < OpenaiAssistant
   PROMPT
 
   def system_instruction
-    SYSTEM_INSTRUCTION
+    ONBOARDING_SYSTEM_INSTRUCTION_GPT
   end
 end

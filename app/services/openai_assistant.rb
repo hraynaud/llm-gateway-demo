@@ -2,7 +2,7 @@ class OpenaiAssistant < AiAssistant
   def chat(message, history = [])
     @chat_history << { role: 'user', content: message }
     messages = prepare_messages(history)
-    response = OpenaiProvider.bot.chat(messages, system_instruction)
+    response = OpenaiProvider.chat(messages)
     response_text = extract_response_text(response)
     @chat_history << { role: 'assistant', content: response_text }
 
@@ -15,41 +15,13 @@ class OpenaiAssistant < AiAssistant
 
   private
 
+  # OpenAI takes the system prompt as the first message and the standard
+  # user/assistant roles; the base class's extract_response_text reads `choices`.
   def prepare_messages(history)
     messages = []
-    messages.concat(build_messages(history)) if history.any?
+    messages << { role: 'system', content: system_instruction } if system_instruction
+    messages.concat(history.map { |msg| { role: msg[:role], content: msg[:content] } })
     messages << { role: 'user', content: @chat_history.last[:content] }
     messages
-  end
-
-  def build_messages(history)
-    history.map do |msg|
-      role = msg[:role] == 'assistant' ? 'model' : msg[:role]
-      { role: role, content: msg[:content] }
-
-    end
-  end
-
-  def extract_response_text(response)
-    if response.is_a?(Enumerator)
-      # For streaming responses, collect all chunks
-      build_from_chunks(response)
-    elsif response.is_a?(Hash)
-      response['candidates'][0]['content']['parts'][0]['text']
-    else
-      response.to_s
-    end
-  end
-
-  def build_from_chunks(response)
-    full_response = ''
-    response.each do |chunk|
-      if chunk.is_a?(Hash)
-        full_response += chunk['candidates'][0]['content']['parts'][0]['text']
-      elsif chunk.is_a?(String)
-        full_response += chunk
-      end
-    end
-    full_response
   end
 end
