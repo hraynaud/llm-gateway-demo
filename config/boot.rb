@@ -28,8 +28,9 @@ ENV['OLLAMA_SERVER_ADDRESS'] ||= 'http://localhost:11434'
 %w[
   ollama_service openai_provider gemini_provider
   ai_service
-  ai_assistant gemini_assistant openai_assistant
+  ai_assistant gemini_assistant openai_assistant ollama_assistant
   gemini_project_assistant gemini_onboarding_assistant
   openai_project_assistant openai_onboarding_assistant
+  ollama_project_assistant ollama_onboarding_assistant
   chat_service summarizer_service
 ].each { |file| require_relative "../app/services/#{file}" }

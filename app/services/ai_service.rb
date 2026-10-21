@@ -11,14 +11,26 @@ module AiService
                     end
     end
 
-    # TODO: derive from configuration
     def project_assistant
-      GeminiProjectAssistant.new
+      case current_provider
+      when 'openai'
+        OpenaiProjectAssistant.new
+      when 'gemini'
+        GeminiProjectAssistant.new
+      else
+        OllamaProjectAssistant.new
+      end
     end
 
-    # TODO: derive from configuration
     def onboarding_assistant
-      GeminiOnboardingAssistant.new
+      case current_provider
+      when 'openai'
+        OpenaiOnboardingAssistant.new
+      when 'gemini'
+        GeminiOnboardingAssistant.new
+      else
+        OllamaOnboardingAssistant.new
+      end
     end
 
     def assistant_for(mode)
