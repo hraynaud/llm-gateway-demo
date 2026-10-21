@@ -70,6 +70,24 @@ RSpec.describe Demo::CLI do
 
   describe '.embedding_model' do
     it('uses the Ollama embedding model by default') { expect(described_class.embedding_model('ollama')).to eq(OllamaService::EMBEDDING_MODEL) }
-    it('uses the OpenAI default for openai') { expect(described_class.embedding_model('openai')).to eq(ENV.fetch('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')) }
+
+    context 'with openai' do
+      around do |example|
+        saved = ENV.fetch('OPENAI_EMBEDDING_MODEL', nil)
+        example.run
+      ensure
+        saved.nil? ? ENV.delete('OPENAI_EMBEDDING_MODEL') : ENV['OPENAI_EMBEDDING_MODEL'] = saved
+      end
+
+      it 'uses OPENAI_EMBEDDING_MODEL when set' do
+        ENV['OPENAI_EMBEDDING_MODEL'] = 'pinned-model'
+        expect(described_class.embedding_model('openai')).to eq('pinned-model')
+      end
+
+      it 'falls back to text-embedding-3-small when unset' do
+        ENV.delete('OPENAI_EMBEDDING_MODEL')
+        expect(described_class.embedding_model('openai')).to eq('text-embedding-3-small')
+      end
+    end
   end
 end

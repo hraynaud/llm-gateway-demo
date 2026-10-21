@@ -6,13 +6,13 @@ RSpec.describe ChatService do
   end
 
   {
-    'Ollama (array of events)' => [{ 'response' => 'from ollama', 'done' => true }],
-    'OpenAI (choices)' => { 'choices' => [{ 'message' => { 'content' => 'from openai' } }] },
-    'Gemini (candidates)' => { 'candidates' => [{ 'content' => { 'parts' => [{ 'text' => 'from gemini' }] } }] }
-  }.each do |shape, response|
+    'Ollama (array of events)' => [[{ 'response' => 'from ollama', 'done' => true }], 'from ollama'],
+    'OpenAI (choices)' => [{ 'choices' => [{ 'message' => { 'content' => 'from openai' } }] }, 'from openai'],
+    'Gemini (candidates)' => [{ 'candidates' => [{ 'content' => { 'parts' => [{ 'text' => 'from gemini' }] } }] }, 'from gemini']
+  }.each do |shape, (response, expected)|
     it "reads the reply from the #{shape} shape" do
       allow(AiService).to receive(:completion).and_return(response)
-      expect(service.chat_non_streaming('hi')).to start_with('from ')
+      expect(service.chat_non_streaming('hi')).to eq(expected)
     end
   end
 
