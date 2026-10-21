@@ -5,11 +5,14 @@ require_relative '../demo/cli'
 
 # Show the original summarisation log line unless the user chose a level.
 Rails.logger.level = Logger::DEBUG unless ENV['LOG_LEVEL']
+# The HTTP client (Ethon) logs through its own logger at debug level; keep it quiet
+# so the summarisation line stays visible.
+Ethon.logger = Logger.new(nil) if defined?(Ethon)
 
 Demo::CLI.run do
   chat = ChatService.new
   puts "ChatService on #{AiService.current_provider}. History is summarised past " \
-       "#{ChatService::MAX_HISTORY_SIZE} messages (watch for [debug] lines). Ctrl-D to quit."
+       "#{ChatService::MAX_HISTORY_SIZE} messages (watch for \"[debug] Summary of previous conversation\" lines). Ctrl-D to quit."
   loop do
     print '> '
     line = $stdin.gets or break
