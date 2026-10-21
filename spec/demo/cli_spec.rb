@@ -29,6 +29,25 @@ RSpec.describe Demo::CLI do
       expect(described_class.error_message(error)).to include("ollama pull #{OllamaService::LLM}")
     end
 
+    it 'reports the HTTP status for a 400, not "can\'t reach"' do
+      cause = Faraday::BadRequestError.new('400', { status: 400, body: '{"error":"x does not support chat"}' })
+      message = described_class.error_message(Ollama::Errors::RequestError.new('400', request: cause))
+      expect(message).to include('HTTP 400', 'does not support chat')
+      expect(message).not_to include("Can't reach")
+    end
+
+    it 'reports the HTTP status for a 500, not "can\'t reach"' do
+      cause = Faraday::ServerError.new('500', { status: 500, body: 'oom' })
+      message = described_class.error_message(Ollama::Errors::RequestError.new('500', request: cause))
+      expect(message).to include('HTTP 500', 'oom')
+      expect(message).not_to include("Can't reach")
+    end
+
+    it 'explains an Ollama timeout as unreachable' do
+      error = Ollama::Errors::RequestError.new('timeout', request: Faraday::TimeoutError.new('timed out'))
+      expect(described_class.error_message(error)).to include("Can't reach Ollama")
+    end
+
     it 'passes NotImplementedError messages through' do
       expect(described_class.error_message(NotImplementedError.new('no embeddings'))).to eq('no embeddings')
     end

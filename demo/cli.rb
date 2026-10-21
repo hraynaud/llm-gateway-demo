@@ -25,9 +25,11 @@ module Demo
         if model_missing?(error)
           "Ollama doesn't have the model. Run: ollama pull #{OllamaService::LLM} " \
             "(and ollama pull #{OllamaService::EMBEDDING_MODEL} for bin/search)."
-        else
+        elsif unreachable?(error)
           "Can't reach Ollama at #{OllamaService::OLLAMA_SERVER_ADDRESS}. " \
             "Run 'ollama serve', or set AI_PROVIDER=gemini|openai with a key."
+        else
+          http_error_message(error)
         end
       when NotImplementedError
         error.message
@@ -60,6 +62,18 @@ module Demo
     rescue StandardError, NotImplementedError => e
       warn error_message(e)
       exit 1
+    end
+
+    def unreachable?(error)
+      error.request.is_a?(Faraday::ConnectionFailed) || error.request.is_a?(Faraday::TimeoutError)
+    end
+
+    def http_error_message(error)
+      cause = error.request
+      status = cause.respond_to?(:response_status) ? cause.response_status : nil
+      body = cause.respond_to?(:response_body) ? cause.response_body.to_s : ''
+      detail = body.empty? ? error.message : body
+      "Ollama returned HTTP #{status || 'error'}: #{detail}"
     end
 
     def model_missing?(error)
