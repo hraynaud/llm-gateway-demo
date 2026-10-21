@@ -86,5 +86,18 @@ module GeminiProvider
     def bot
       Bot
     end
+
+    # AiService sends these to whichever provider is configured.
+    def completion(prompt, _model = nil)
+      Bot.completion(prompt)
+    end
+
+    def parse_completion(completion)
+      Bot.parse_completion(completion)
+    end
+
+    def embedding(_prompt, _model = nil)
+      raise NotImplementedError, 'Gemini embeddings are not supported; use AI_PROVIDER=ollama or openai'
+    end
   end
 end
