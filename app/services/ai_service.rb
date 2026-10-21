@@ -76,12 +76,14 @@ module AiService
 
     # Method to get current provider name
     def current_provider
-      case provider
-      when OpenaiProvider
+      # `case provider when OpenaiProvider` uses Module#===, which asks whether the
+      # provider is an *instance* of OpenaiProvider, never true for the module itself.
+      case provider.name
+      when 'OpenaiProvider'
         'openai'
-      when GeminiProvider
+      when 'GeminiProvider'
         'gemini'
-      when OllamaService
+      when 'OllamaService'
         'ollama'
       else
         'unknown'
