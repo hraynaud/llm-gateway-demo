@@ -56,13 +56,7 @@ class ChatService
     response = AiService.completion(messages.to_json)
 
     # Extract response text
-    response_text = if response['response']
-                      response['response']
-                    elsif response[0] && response[0]['response']
-                      response[0]['response']
-                    else
-                      response.to_s
-                    end
+    response_text = completion_text(response)
 
     # Add to chat history
     @chat_history << { 'role' => 'assistant', 'content' => response_text }
@@ -79,10 +73,22 @@ class ChatService
 
     # For summarization, we don't need to stream
     summary_response = AiService.completion(history_with_prompt.to_json)
-    summary_text = summary_response['response'] || summary_response[0]['response']
+    summary_text = completion_text(summary_response)
 
     Rails.logger.debug("Summary of previous conversation: #{summary_text}")
 
     [{ 'role' => 'system', 'content' => "Summary of previous conversation: #{summary_text}" }]
+  end
+
+  # Providers answer completions in different shapes: Ollama returns an array
+  # of events, OpenAI a hash with `choices`, Gemini a hash with `candidates`.
+  def completion_text(response)
+    return response.dig(0, 'response').to_s if response.is_a?(Array)
+    return response.to_s unless response.is_a?(Hash)
+
+    response['response'] ||
+      response.dig('choices', 0, 'message', 'content') ||
+      response.dig('candidates', 0, 'content', 'parts', 0, 'text') ||
+      response.to_s
   end
 end
