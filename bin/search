@@ -1,0 +1,31 @@
+#!/usr/bin/env ruby
+# "Who knows about X?" over invented profiles, enriched by the original SummarizerService prompt.
+require_relative '../config/boot'
+require_relative '../demo/cli'
+require_relative '../demo/semantic_search'
+
+compare = ARGV.delete('--compare')
+query = ARGV.join(' ').strip
+abort 'Usage: bin/search QUERY [--compare]   e.g. bin/search "someone into pilates" --compare' if query.empty?
+
+Demo::CLI.run do
+  provider = AiService.current_provider
+  abort Demo::CLI.search_unsupported_message(provider) if Demo::CLI.search_unsupported_message(provider)
+
+  people = JSON.parse(File.read(File.expand_path('../demo/people.json', __dir__)))
+  cache_path = SemanticSearch.cache_path_for(provider:, model: Demo::CLI.embedding_model(provider))
+  warn "Indexing #{people.size} profiles with #{provider} (first run only; cached afterwards)..." unless File.exist?(cache_path)
+  search = SemanticSearch.new(people, cache_path:).index!
+
+  if compare
+    puts format('%-22s %9s %6s', 'name', 'enriched', 'bare')
+    search.compare(query).each do |row|
+      flag = row[:gained] ? '  <- found via enrichment' : ''
+      puts format('%-22s %9d %6d%s', row[:name], row[:enriched_rank], row[:bare_rank], flag)
+    end
+  else
+    results = search.query(query)
+    results.each { |r| puts format('%.3f  %s', r[:score], r[:name]) }
+    puts '', "Why #{results.first[:name]} matched (LLM enrichment):", results.first[:enrichment]
+  end
+end

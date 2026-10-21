@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+# Onboarding assistant REPL: a guided interview that ends in a <user_data> JSON block.
+require_relative '../config/boot'
+require_relative '../demo/cli'
+
+Demo::CLI.run do
+  assistant = AiService.onboarding_assistant
+  puts "#{assistant.class.name} on #{AiService.current_provider}. Say hi to start. Ctrl-D to quit."
+  loop do
+    print '> '
+    line = $stdin.gets or break
+    next if line.strip.empty?
+
+    reply = assistant.chat(line.strip, assistant.get_history)
+    puts reply, ''
+
+    case (data = Demo::CLI.extract_tagged_json(reply, 'user_data'))
+    when Hash then puts 'Extracted <user_data>:', JSON.pretty_generate(data), ''
+    when :invalid then puts '(The <user_data> block was not valid JSON; smaller local models sometimes slip.)', ''
+    end
+  end
+end

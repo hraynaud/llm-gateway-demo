@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+# ChatService REPL: rolling memory, summarised by the LLM past MAX_HISTORY_SIZE.
+require_relative '../config/boot'
+require_relative '../demo/cli'
+
+# Show the original summarisation log line unless the user chose a level.
+Rails.logger.level = Logger::DEBUG unless ENV['LOG_LEVEL']
+
+Demo::CLI.run do
+  chat = ChatService.new
+  puts "ChatService on #{AiService.current_provider}. History is summarised past " \
+       "#{ChatService::MAX_HISTORY_SIZE} messages (watch for [debug] lines). Ctrl-D to quit."
+  loop do
+    print '> '
+    line = $stdin.gets or break
+    next if line.strip.empty?
+
+    puts chat.chat_non_streaming(line.strip), ''
+  end
+end
