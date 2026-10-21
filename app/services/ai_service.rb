@@ -21,6 +21,17 @@ module AiService
       GeminiOnboardingAssistant.new
     end
 
+    def assistant_for(mode)
+      case mode&.to_sym
+      when :project
+        project_assistant
+      when :onboarding
+        onboarding_assistant
+      else
+        raise ArgumentError, "Unknown assistant mode: #{mode.inspect}"
+      end
+    end
+
     def embedding(prompt, model = nil)
       if model
         provider.embedding(prompt, model)

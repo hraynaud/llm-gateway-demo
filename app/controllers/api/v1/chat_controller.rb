@@ -7,11 +7,10 @@ module Api
         message = msg_params[:message]
         mode = msg_params[:mode]&.to_sym
         history = msg_params[:history] || []
-        model_type = msg_params[:model_type]&.to_sym # Optional override
 
         if mode && %i[project onboarding].include?(mode)
           # Use AI Assistant for project wizard or onboarding
-          ai_assistant = AiAssistant.new(mode, model_type)
+          ai_assistant = AiService.assistant_for(mode)
           response = ai_assistant.chat(message, history)
 
           render json: { text: response }
@@ -57,7 +56,7 @@ module Api
       private
 
       def msg_params
-        params.permit(:message, :mode, :model_type, history: %i[role content])
+        params.permit(:message, :mode, history: %i[role content])
       end
     end
   end
