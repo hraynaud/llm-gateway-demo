@@ -2,3 +2,4 @@
 /vendor/
 /demo/.index-*.json
 /.superpowers/
+.DS_Store

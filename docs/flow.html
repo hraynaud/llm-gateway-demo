@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Gateway Flow</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1f2328; --muted: #5d646d; --card: #ffffff; --border: #e3e0d8; --accent: #2f6f5e; --code: #f1efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16181b; --fg: #e6e6e3; --muted: #9aa0a6; --card: #1e2125; --border: #30343a; --accent: #7cc4ad; --code: #262a2f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181b; --fg: #e6e6e3; --muted: #9aa0a6; --card: #1e2125; --border: #30343a; --accent: #7cc4ad; --code: #262a2f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 40px 0 8px; color: var(--accent); }
+  p, li { color: var(--fg); }
+  .lede { color: var(--muted); margin-top: 0; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 8px; }
+  nav a { color: var(--accent); text-decoration: none; border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; font-size: .9rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; overflow-x: auto; }
+  .mermaid { min-width: 560px; text-align: center; }
+  ul.notes { margin: 10px 0 0; padding-left: 20px; font-size: .95rem; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>LLM gateway: how a request flows</h1>
+  <p class="lede">From <code>config/boot.rb</code> through the two <code>bin/</code> entry points to the provider that answers.</p>
+  <nav>
+    <a href="#boot">1. Boot</a><a href="#gateway">2. Gateway</a><a href="#onboard">3. bin/onboard</a><a href="#search">4. bin/search</a><a href="#errors">5. Errors</a>
+  </nav>
+
+  <h2 id="boot">1. Boot: <code>config/boot.rb</code></h2>
+  <div class="card"><pre class="mermaid">
+flowchart TD
+  A["bin/onboard · bin/search"] --> B["require config/boot"]
+  B --> C["BUNDLE_GEMFILE ||= repo Gemfile<br/>require bundler/setup"]
+  C --> D["stdlib: json, logger, net/http, singleton<br/>ActiveSupport indifferent access"]
+  D --> E{"Rails defined?"}
+  E -- no --> F["Rails.logger shim<br/>stderr, LOG_LEVEL (default warn)"]
+  E -- yes --> G
+  F --> G["OLLAMA_SERVER_ADDRESS ||= http://localhost:11434"]
+  G --> H["require app/services in dependency order"]
+  H --> H1["1. providers<br/>OllamaService · OpenaiProvider · GeminiProvider"]
+  H1 --> H2["2. factory<br/>AiService"]
+  H2 --> H3["3. base assistants<br/>AiAssistant → Gemini / Openai / Ollama Assistant"]
+  H3 --> H4["4. mode subclasses<br/>*ProjectAssistant · *OnboardingAssistant"]
+  H4 --> H5["5. services<br/>SummarizerService"]
+  H5 --> Z["require demo/cli (+ demo/semantic_search for bin/search)"]
+  </pre>
+  <ul class="notes">
+    <li>Controllers under <code>app/controllers</code> are never loaded. The shell is only the slice of Rails the services needed.</li>
+    <li><code>OllamaService</code> reads <code>LLM</code>, <code>EMBEDDING_MODEL</code> and <code>OLLAMA_SERVER_ADDRESS</code> into constants at require time, so set them before launching.</li>
+  </ul></div>
+
+  <h2 id="gateway">2. The gateway: <code>AiService</code></h2>
+  <div class="card"><pre class="mermaid">
+flowchart LR
+  ENV["ENV AI_PROVIDER<br/>(default ollama)"] --> P["AiService.provider<br/>memoized"]
+  P -->|openai| OP["OpenaiProvider<br/>chat · completion · embedding"]
+  P -->|gemini| GP["GeminiProvider<br/>completion · parse_completion<br/>embedding raises NotImplementedError"]
+  P -->|anything else| OS["OllamaService<br/>chat (streaming Enumerator)<br/>completion · embedding"]
+  CALLERS["AiService.completion / chat / embedding / parse_completion"] --> P
+  CP["AiService.current_provider<br/>case provider.name → 'openai' | 'gemini' | 'ollama'"] --> F{"assistant factories"}
+  F -->|project_assistant| PA["Openai / Gemini / Ollama ProjectAssistant"]
+  F -->|onboarding_assistant| OA["Openai / Gemini / Ollama OnboardingAssistant"]
+  AF["assistant_for(mode)<br/>'project' | 'onboarding' | else ArgumentError"] --> F
+  </pre>
+  <ul class="notes">
+    <li>Plain calls (<code>completion</code>, <code>chat</code>, <code>embedding</code>) go through <code>AiService.provider</code>. Assistants are picked by <code>current_provider</code>, then call their own provider directly.</li>
+    <li>The Ollama assistants reuse the Gemini system prompts.</li>
+  </ul></div>
+
+
+  <h2 id="onboard">3. <code>bin/onboard</code>: onboarding assistant</h2>
+  <div class="card"><pre class="mermaid">
+flowchart TD
+  S["bin/onboard"] --> R["Demo::CLI.run"]
+  R --> F["AiService.onboarding_assistant<br/>chosen by current_provider"]
+  F --> IN["read a line from stdin"]
+  IN --> CH["assistant.chat(line, assistant.get_history)"]
+  CH --> PM["prepare_messages<br/>system instruction + history + user"]
+  PM --> W{"which adapter?"}
+  W -->|Gemini| G["GeminiProvider.bot.chat(messages, system_instruction)"]
+  W -->|OpenAI| O["OpenaiProvider.chat(messages)"]
+  W -->|Ollama| OL["OllamaService.chat(messages)<br/>streaming Enumerator"]
+  G --> X["extract_response_text<br/>joins chunks or reads choices / candidates / response"]
+  O --> X
+  OL --> X
+  X --> P["print reply"]
+  P --> J{"extract_tagged_json(reply, 'user_data')"}
+  J -->|Hash| PJ["print extracted JSON"]
+  J -->|:invalid| PI["print 'not valid JSON' note"]
+  J -->|no tag| IN
+  PJ --> IN
+  PI --> IN
+  </pre></div>
+
+  <h2 id="search">4. <code>bin/search</code>: enrichment-based semantic search</h2>
+  <div class="card"><pre class="mermaid">
+flowchart TD
+  S["bin/search QUERY [--compare]"] --> A{"query empty?"}
+  A -- yes --> U["abort with usage"]
+  A -- no --> R["Demo::CLI.run"]
+  R --> GM{"provider is gemini?"}
+  GM -- yes --> GA["abort: no embeddings on Gemini"]
+  GM -- no --> PJ["load demo/people.json (20 invented people)"]
+  PJ --> CP["cache_path_for(provider, embedding model)<br/>demo/.index-provider-model.json"]
+  CP --> IX["SemanticSearch#index!"]
+  IX --> LC{"cache exists and people digest matches?"}
+  LC -- yes --> READY["entries in memory"]
+  LC -- no --> BI["build_index, per person:"]
+  BI --> EN["SummarizerService.search(bio)<br/>AiService.completion → parse_completion<br/>summary + related keywords"]
+  EN --> V1["vector = embedding(bio + enrichment)"]
+  EN --> V2["bare_vector = embedding(bio)"]
+  V1 --> WC["write cache with people digest"]
+  V2 --> WC
+  WC --> READY
+  READY --> QE["embed the raw query"]
+  QE --> M{"--compare?"}
+  M -- no --> QR["query: cosine rank on vector, top 5<br/>print scores + why #1 matched (its enrichment)"]
+  M -- yes --> CR["compare: rank on vector AND bare_vector<br/>flag rows where bare rank > 5<br/>'found via enrichment'"]
+  </pre>
+  <ul class="notes">
+    <li>Enrichment happens once per profile, at index time. Queries cost a single embedding call.</li>
+    <li>Ties keep <code>people.json</code> order, so results are stable between runs.</li>
+  </ul></div>
+
+  <h2 id="errors">5. Errors: <code>Demo::CLI.run</code></h2>
+  <div class="card"><pre class="mermaid">
+flowchart TD
+  R["Demo::CLI.run"] --> K{"openai/gemini and API key missing?"}
+  K -- yes --> KM["print 'needs OPENAI_API_KEY / GEMINI_API_KEY', exit 1"]
+  K -- no --> Y["yield the script body"]
+  Y -->|Interrupt| I["newline, quiet exit"]
+  Y -->|StandardError or NotImplementedError| EM["error_message(e)"]
+  EM --> T{"Ollama::Errors::RequestError?"}
+  T -- "HTTP 404" --> M1["'Run: ollama pull LLM (and EMBEDDING_MODEL)'"]
+  T -- "ConnectionFailed / Timeout" --> M2["'Can't reach Ollama at …, run ollama serve'"]
+  T -- "other HTTP" --> M3["'Ollama returned HTTP status: body'"]
+  EM -->|NotImplementedError| M4["its message (e.g. Gemini embeddings)"]
+  EM -->|anything else| M5["Class: message"]
+  M1 --> X["warn, exit 1"]
+  M2 --> X
+  M3 --> X
+  M4 --> X
+  M5 --> X
+  </pre></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  const dark = document.documentElement.dataset.theme === 'dark' ||
+    (document.documentElement.dataset.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'neutral', flowchart: { htmlLabels: true, curve: 'basis' }, securityLevel: 'strict' });
+</script>
+</body>
+</html>
