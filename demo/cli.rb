@@ -22,7 +22,8 @@ module Demo
             "(and ollama pull #{OllamaService::EMBEDDING_MODEL} for bin/search)."
         elsif unreachable?(error)
           "Can't reach Ollama at #{OllamaService::OLLAMA_SERVER_ADDRESS}. " \
-            "Run 'ollama serve', or set AI_PROVIDER=gemini|openai with a key."
+            "Run 'ollama serve', or set AI_PROVIDER=gemini|openai with a key " \
+            "(bin/search also embeds with Ollama unless EMBEDDING_MODEL_PROVIDER=openai)."
         else
           http_error_message(error)
         end

@@ -86,7 +86,7 @@ RSpec.describe Demo::CLI do
   describe '.error_message' do
     it 'explains an unreachable Ollama' do
       error = Ollama::Errors::RequestError.new('Failed to open TCP connection', request: Faraday::ConnectionFailed.new('refused'))
-      expect(described_class.error_message(error)).to include("Can't reach Ollama", 'ollama serve', 'AI_PROVIDER')
+      expect(described_class.error_message(error)).to include("Can't reach Ollama", 'ollama serve', 'AI_PROVIDER', 'EMBEDDING_MODEL_PROVIDER=openai')
     end
 
     it 'suggests a pull when Ollama does not have the model' do
