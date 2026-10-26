@@ -1,0 +1,14 @@
+[
+  { "query": "my teenager wants to protect herself if someone grabs her", "expect": ["Rafael Ortiz", "Lucía Ferreira"], "difficulty": "hard" },
+  { "query": "I'd love a class on making my own coffee mugs", "expect": ["Keiko Arai", "Tomasz Wierzbicki"], "difficulty": "hard" },
+  { "query": "my kitchen sink keeps dripping under the cabinet", "expect": ["Luis Navarro"], "difficulty": "hard" },
+  { "query": "food for a hundred guests at our family reunion", "expect": ["Amara Diallo"], "difficulty": "hard" },
+  { "query": "help me balance the books for my store", "expect": ["Sofia Brandt", "Chen Wei"], "difficulty": "hard" },
+  { "query": "someone to speak for my grandmother at her visa appointment", "expect": ["Ibrahim Haddad", "Diego Alvarez"], "difficulty": "hard" },
+  { "query": "a coach for kids' martial arts", "expect": ["Lucía Ferreira"], "difficulty": "medium" },
+  { "query": "pottery wheel lessons", "expect": ["Tomasz Wierzbicki", "Keiko Arai"], "difficulty": "medium" },
+  { "query": "fix a leaking pipe", "expect": ["Luis Navarro"], "difficulty": "medium" },
+  { "query": "practice speaking Chinese with a tutor", "expect": ["Mei Lin"], "difficulty": "medium" },
+  { "query": "tax returns for freelancers", "expect": ["Chen Wei"], "difficulty": "easy" },
+  { "query": "women's self-defense class", "expect": ["Owen Clarke"], "difficulty": "easy" }
+]
