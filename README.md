@@ -26,6 +26,8 @@ It's raw HTTP and the Ollama client, with no LangChain:
   brings in "martial arts"), and the endorsement was embedded together with those terms. That
   way a search can match the concept, not just the words someone happened to type. The terms
   are generated once per topic and reused. The graph code that did this isn't included here.
+  Search queries were expanded the same way: the LLM routed a free-text query to a canonical
+  topic, and that topic's related terms were added to the query before it was embedded.
   `SummarizerService` is a prompt I wrote for the same idea at the profile level. It was never
   wired in, and `bin/search` uses it so you can see the technique run.
 
@@ -42,7 +44,7 @@ bin/onboard                # needs a local Ollama (see "Run it")
    `ollama pull llama3 && ollama pull mxbai-embed-large`. Other models work:
    `LLM=qwen2:7b EMBEDDING_MODEL=nomic-embed-text bin/onboard`.
 3. **Hosted provider.** `AI_PROVIDER=gemini GEMINI_API_KEY=… bin/onboard`, or
-   `AI_PROVIDER=openai OPENAI_API_KEY=… bin/search "someone into pilates"`.
+   `AI_PROVIDER=openai OPENAI_API_KEY=… bin/search --eval`.
 
 Environment variables (all optional for local Ollama):
 
@@ -51,6 +53,7 @@ Environment variables (all optional for local Ollama):
 | `AI_PROVIDER` | `ollama` | `ollama`, `openai` or `gemini` |
 | `LLM` | `llama3` | Ollama chat/completion model |
 | `EMBEDDING_MODEL` | `mxbai-embed-large` | Ollama embedding model |
+| `EMBEDDING_MODEL_PROVIDER` | follows `AI_PROVIDER` if it can embed, otherwise `ollama` | Which provider embeds for `bin/search` (`ollama` or `openai`) |
 | `OLLAMA_SERVER_ADDRESS` | `http://localhost:11434` (set by `config/boot.rb`; the service itself defaults to `http://ollama:11434`) | Ollama URL |
 | `GEMINI_API_KEY` | none, required for Gemini | Gemini auth |
 | `GEMINI_LLM` | `gemini-2.5-flash` | Gemini model |
@@ -63,10 +66,72 @@ Environment variables (all optional for local Ollama):
 |---|---|
 | `bin/chat` | An early general chat endpoint that summarises its own history (not part of the flows above) |
 | `bin/onboard` | The onboarding interview; prints the extracted `<user_data>` JSON |
-| `bin/search QUERY [--compare]` | Enrichment-based search over `demo/people.json` |
+| `bin/search QUERY [--compare]` | Enrichment-based search over `demo/people.json`; `--compare` shows each match with and without enrichment |
+| `bin/search --eval` | Scores the queries in `demo/queries.json` with and without enrichment |
 
 Smaller local models follow the JSON-in-tags format less reliably than Gemini. `bin/onboard`
 tells you when the block isn't valid JSON.
+
+## Swap the models
+
+`bin/search` uses two models with different jobs:
+
+- **The enrichment model** reads each profile and writes a summary plus related terms.
+  `AI_PROVIDER` picks it.
+- **The embedding model** turns the enriched profiles and your query into vectors.
+  `EMBEDDING_MODEL_PROVIDER` picks it.
+
+Mix them freely:
+
+```bash
+bin/search "QUERY" --compare                                       # Ollama enriches and embeds
+AI_PROVIDER=gemini GEMINI_API_KEY=… bin/search "QUERY" --compare   # Gemini enriches, Ollama embeds
+AI_PROVIDER=openai OPENAI_API_KEY=… bin/search --eval              # OpenAI does both
+```
+
+Each combination gets its own cached index, and the first line of every run names both models.
+
+**Reading the output.** Strength is how far a person's score sits above the query's average, in
+standard deviations (`+2.3σ`). Matches at +1.5σ or more count as strong; the rest go under a
+"weaker matches" divider. The cutoff is relative on purpose: each embedding model scores on its
+own scale, so a fixed number stops working the moment you swap models. `--compare` shows each
+person's rank with and without enrichment, `↑n` or `↓n` when enrichment moved them, and
+`<- found via enrichment` only for a strong match the bare bio would have ranked outside the
+top 5. `--eval` runs the queries in `demo/queries.json`, each naming the people it should find,
+and reports how often the right person came first with and without enrichment.
+
+### What to expect
+
+On my machine, with local models only (12 queries):
+
+| Enrichment | Embeddings | Right person #1, enriched | Right person #1, bare | Enrichment helped / hurt / same |
+|---|---|---|---|---|
+| qwen2:7b | mxbai-embed-large | 11/12 | 11/12 | 0 / 0 / 12 |
+| qwen2:7b | nomic-embed-text | 11/12 | 11/12 | 1 / 0 / 11 |
+
+Two things limit the effect with local models. A small model writes weak enrichment: it tends to
+restate the bio instead of adding related ideas, and enrichment is only as good as the terms it
+adds. And newer embedding models already place related words close together, which closes much
+of the gap enrichment was built for. In January 2025 I switched from nomic-embed-text to the
+larger, higher-dimensional mxbai-embed-large (768 to 1024 dimensions) after the tuning I knew
+about didn't help. To compare a stronger enrichment model, set `AI_PROVIDER=gemini` or
+`AI_PROVIDER=openai` and run `bin/search --eval` again.
+
+For example, with qwen2:7b and mxbai-embed-large, take the query "my teenager wants to protect
+herself if someone grabs her". Rafael Ortiz's bio never uses the query's words, and enrichment
+lifts him from 5th to 3rd. He was in the top 5 either way, so he is not marked as found via
+enrichment, but he stays above the divider:
+
+```
+Enrichment: ollama (qwen2:7b) · Embeddings: ollama (mxbai-embed-large)
+name                   enriched        bare       move
+Owen Clarke             1 0.568 +3.2σ   1 0.501
+Lucía Ferreira          2 0.492 +2.0σ   2 0.477
+Rafael Ortiz            3 0.473 +1.7σ   5 0.433   ↑2
+Beatrice Moyo           4 0.459 +1.5σ   4 0.439
+--- weaker matches (not clearly above the crowd) ---
+Hannah Weiss            5 0.457 +1.4σ   3 0.452   ↓2
+```
 
 ## What's original and what's new
 
@@ -76,6 +141,7 @@ tells you when the block isn't valid JSON.
 - `config/boot.rb`, a small shell that lets the Rails services run as plain Ruby.
 - Six fixes to latent bugs in the original code (seven `fix:` commits; one needed a follow-up), each with the spec that caught it, plus two `fix:` commits to the new demo scripts.
 - Ollama adapters for the assistants, the `demo/` search, the `bin/` scripts and the test suite.
+- For `bin/search`: separate enrichment and embedding models (`EMBEDDING_MODEL_PROVIDER`), a cache per model pair, match strength in standard deviations, a stricter `--compare`, harder demo data and `--eval`.
 
 ## What I'd do differently today
 
@@ -114,7 +180,7 @@ abstract away. Knowing what I know now, here's what I'd change:
 - `app/controllers/` is reference code showing the Rails integration. It needs Rails and is not
   loaded here.
 - Server-sent-event streaming (`ChatController#stream`) is not demonstrated.
-- Gemini supports completion and the assistants, but not embeddings or streaming chat.
+- Gemini supports completion, enrichment and the assistants, but not embeddings or streaming chat, so it can't be the embedding provider for `bin/search`.
 - `GeminiOnboardingAssistant::SYSTEM_INSTRUCTION_BKP` is an unused earlier prompt, kept as history.
 
 ## Appendix: timeline from the commit history

@@ -56,7 +56,7 @@ flowchart TD
   H2 --> H3["3. base assistants<br/>AiAssistant → Gemini / Openai / Ollama Assistant"]
   H3 --> H4["4. mode subclasses<br/>*ProjectAssistant · *OnboardingAssistant"]
   H4 --> H5["5. services<br/>SummarizerService"]
-  H5 --> Z["require demo/cli (+ demo/semantic_search for bin/search)"]
+  H5 --> Z["require demo/cli (+ demo/report and demo/semantic_search for bin/search)"]
   </pre>
   <ul class="notes">
     <li>Controllers under <code>app/controllers</code> are never loaded. The shell is only the slice of Rails the services needed.</li>
@@ -109,30 +109,27 @@ flowchart TD
   <h2 id="search">4. <code>bin/search</code>: enrichment-based semantic search</h2>
   <div class="card"><pre class="mermaid">
 flowchart TD
-  S["bin/search QUERY [--compare]"] --> A{"query empty?"}
-  A -- yes --> U["abort with usage"]
-  A -- no --> R["Demo::CLI.run"]
-  R --> GM{"provider is gemini?"}
-  GM -- yes --> GA["abort: no embeddings on Gemini"]
-  GM -- no --> PJ["load demo/people.json (20 invented people)"]
-  PJ --> CP["cache_path_for(provider, embedding model)<br/>demo/.index-provider-model.json"]
-  CP --> IX["SemanticSearch#index!"]
-  IX --> LC{"cache exists and people digest matches?"}
-  LC -- yes --> READY["entries in memory"]
-  LC -- no --> BI["build_index, per person:"]
-  BI --> EN["SummarizerService.search(bio)<br/>AiService.completion → parse_completion<br/>summary + related keywords"]
-  EN --> V1["vector = embedding(bio + enrichment)"]
-  EN --> V2["bare_vector = embedding(bio)"]
-  V1 --> WC["write cache with people digest"]
-  V2 --> WC
-  WC --> READY
-  READY --> QE["embed the raw query"]
-  QE --> M{"--compare?"}
-  M -- no --> QR["query: cosine rank on vector, top 5<br/>print scores + why #1 matched (its enrichment)"]
-  M -- yes --> CR["compare: rank on vector AND bare_vector<br/>flag rows where bare rank > 5<br/>'found via enrichment'"]
+  S["bin/search QUERY [--compare], or bin/search --eval"] --> A{"arguments valid?"}
+  A -- no --> U["abort with usage"]
+  A -- yes --> R["Demo::CLI.run (key check for AI_PROVIDER)"]
+  R --> EP{"EMBEDDING_MODEL_PROVIDER"}
+  EP -- "gemini or unknown" --> X["abort: use ollama or openai"]
+  EP -- "set, else follows AI_PROVIDER, else ollama" --> K["key check for the embedding provider"]
+  K --> H["header: Enrichment: provider (model) · Embeddings: provider (model)"]
+  H --> CP["cache file per enrichment model + embedding model"]
+  CP --> LC{"cache valid for these people?"}
+  LC -- yes --> READY["index in memory"]
+  LC -- no --> EN["per person: enrichment via AI_PROVIDER<br/>SummarizerService: summary + related terms"]
+  EN --> V["embed bio + enrichment, and bio alone<br/>via the embedding provider"]
+  V --> READY
+  READY --> M{"mode"}
+  M -- query --> Q["top 5 with score and strength (σ)<br/>divider before weaker matches"]
+  M -- "--compare" --> C["rank and score with and without enrichment<br/>↑n / ↓n movement<br/>flag only strong (≥ +1.5σ) matches the bare bio ranks below 5"]
+  M -- "--eval" --> E["demo/queries.json: best rank of the expected people<br/>hits at #1 and in the top 5; helped / hurt / same"]
   </pre>
   <ul class="notes">
-    <li>Enrichment happens once per profile, at index time. Queries cost a single embedding call.</li>
+    <li>Enrichment runs once per profile for each enrichment model; a query costs one embedding call.</li>
+    <li>Strength is measured against each query's own scores, so the cutoff works for any embedding model.</li>
     <li>Ties keep <code>people.json</code> order, so results are stable between runs.</li>
   </ul></div>
 
