@@ -14,12 +14,6 @@ module Demo
       "#{setting}=#{provider} needs #{key}. Export it, or unset #{setting} to use local Ollama."
     end
 
-    def search_unsupported_message(provider)
-      return unless provider == 'gemini'
-
-      'bin/search needs embeddings, which Gemini does not support here; use AI_PROVIDER=ollama or openai.'
-    end
-
     def error_message(error)
       case error
       when Ollama::Errors::RequestError

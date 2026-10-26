@@ -83,11 +83,6 @@ RSpec.describe Demo::CLI do
     end
   end
 
-  describe '.search_unsupported_message' do
-    it('refuses gemini') { expect(described_class.search_unsupported_message('gemini')).to include('ollama or openai') }
-    it('allows ollama') { expect(described_class.search_unsupported_message('ollama')).to be_nil }
-  end
-
   describe '.error_message' do
     it 'explains an unreachable Ollama' do
       error = Ollama::Errors::RequestError.new('Failed to open TCP connection', request: Faraday::ConnectionFailed.new('refused'))

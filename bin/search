@@ -1,32 +1,43 @@
 #!/usr/bin/env ruby
-# "Who knows about X?" over invented profiles, enriched by the original SummarizerService prompt.
+# "Who knows about X?" over invented profiles. The enrichment model (AI_PROVIDER) and the
+# embedding model (EMBEDDING_MODEL_PROVIDER) are chosen separately, so either can be swapped.
 require_relative '../config/boot'
 require_relative '../demo/cli'
+require_relative '../demo/report'
 require_relative '../demo/semantic_search'
 
+USAGE = 'Usage: bin/search QUERY [--compare] | bin/search --eval   ' \
+        'e.g. bin/search "my kitchen sink keeps dripping" --compare'
 compare = ARGV.delete('--compare')
+evaluate = ARGV.delete('--eval')
 query = ARGV.join(' ').strip
-abort 'Usage: bin/search QUERY [--compare]   e.g. bin/search "someone into pilates" --compare' if query.empty?
+abort USAGE if evaluate ? (!query.empty? || compare) : query.empty?
 
 Demo::CLI.run do
-  provider = AiService.current_provider
-  abort Demo::CLI.search_unsupported_message(provider) if Demo::CLI.search_unsupported_message(provider)
+  enrich = AiService.current_provider
+  embed, problem = Demo::CLI.embedding_provider
+  abort problem if problem
+  setting = ENV['EMBEDDING_MODEL_PROVIDER'].to_s.strip.empty? ? 'AI_PROVIDER' : 'EMBEDDING_MODEL_PROVIDER'
+  key_problem = Demo::CLI.missing_key_message(embed, setting:)
+  abort key_problem if key_problem
+
+  roles = { enrich_provider: enrich, enrich_model: Demo::CLI.enrichment_model(enrich),
+            embed_provider: embed, embed_model: Demo::CLI.embedding_model(embed) }
+  puts Demo::Report.header(**roles)
 
   people = JSON.parse(File.read(File.expand_path('../demo/people.json', __dir__)))
-  cache_path = SemanticSearch.cache_path_for(enrich_provider: provider, enrich_model: Demo::CLI.enrichment_model(provider),
-                                             embed_provider: provider, embed_model: Demo::CLI.embedding_model(provider))
-  warn "Indexing #{people.size} profiles with #{provider} (first run only; cached afterwards)..." unless File.exist?(cache_path)
-  search = SemanticSearch.new(people, cache_path:).index!
+  cache_path = SemanticSearch.cache_path_for(**roles)
+  warn "Indexing #{people.size} profiles for these models (first run only; cached afterwards)..." unless File.exist?(cache_path)
+  search = SemanticSearch.new(people, cache_path:, embedder: Demo::CLI.embedder_for(embed)).index!
 
-  if compare
-    puts format('%-22s %9s %6s', 'name', 'enriched', 'bare')
-    search.compare(query).each do |row|
-      flag = row[:gained] ? '  <- found via enrichment' : ''
-      puts format('%-22s %9d %6d%s', row[:name], row[:enriched_rank], row[:bare_rank], flag)
-    end
+  if evaluate
+    queries = JSON.parse(File.read(File.expand_path('../demo/queries.json', __dir__)))
+    puts Demo::Report.eval_lines(search.evaluate(queries))
+  elsif compare
+    puts Demo::Report.compare_lines(search.compare(query))
   else
     results = search.query(query)
-    results.each { |r| puts format('%.3f  %s', r[:score], r[:name]) }
+    puts Demo::Report.query_lines(results)
     puts '', "Why #{results.first[:name]} matched (LLM enrichment):", results.first[:enrichment]
   end
 end
