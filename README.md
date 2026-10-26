@@ -1,7 +1,7 @@
 # llm-gateway-demo
 
 This code is extracted from a graph-RAG application I started building in spring 2019, worked on off and on, and committed to finishing in 2024. I launched it in private beta in the summer of 2026, and I'm now revising the rollout based on early feedback and experiments. It's my long-running side project, and the place I try out new ideas and experiment with new technologies and techniques. Adding an inference layer to the app I was already building, and then moving to AI-assisted, spec-driven development (which is how pretty much all the code since mid-2026 has been written), were a perfect fit for both the product goals and my own learning.
-
+    
 The app used closed-weight models (OpenAI and Gemini) for chat and completion, and open-weight models such as nomic-embed-text and later mxbai-embed-large, served by Ollama, for embeddings.
 
 The primary datastore is a graph database with nodes for people, topics, endorsements and so on, and the relationships between them. The original idea was much like a personal Angie's List. At a high level, each endorsement carries an embedding of what was said, and a vector index over those embeddings lets a search find relationships by meaning rather than by keyword. A query is matched against the vector index first, and then the graph is walked to show how the person searching is connected to whoever turned up.
@@ -76,6 +76,38 @@ tells you when the block isn't valid JSON.
 - `config/boot.rb`, a small shell that lets the Rails services run as plain Ruby.
 - Six fixes to latent bugs in the original code (seven `fix:` commits; one needed a follow-up), each with the spec that caught it, plus two `fix:` commits to the new demo scripts.
 - Ollama adapters for the assistants, the `demo/` search, the `bin/` scripts and the test suite.
+
+## What I'd do differently today
+
+I built this on raw HTTP and the Ollama client. I added LangChain's Ruby port (`langchainrb`) to
+the Gemfile in February 2024, mainly as a chance to learn it, and took it out a year later without
+ever calling it. That wasn't because my own layer had a gap LangChain would have filled. My
+implementation already maps onto LangChain's basics: a linear, deterministic chain of chat,
+summarizer, embedding and graph search. Building it by hand taught me what these frameworks
+abstract away. Knowing what I know now, here's what I'd change:
+
+- **Evaluate from the start.** I changed retrieval strategies more than once, and part of that
+  churn came from having no way to measure them. I didn't know that evaluating model output
+  against a fixed set of queries and expected answers was standard practice, so I went by what
+  looked right and by specs I'd written against dummy data. The similarity cutoff is a good
+  example. I filtered vector matches with a fixed minimum score and lowered it three times over
+  two years, usually alongside a model change, because each new model scored on its own scale
+  and the old cutoff started dropping good matches. I was tuning by feel against a moving target.
+  Now that I know, I'd build an evaluation set early, judge every model, prompt or strategy change
+  against it, and use a cutoff relative to each query's own scores, which is what the demo does.
+- **Port the chain to LangChain to learn it properly.** The flow is simple enough to translate
+  step for step, which makes it a good way to compare the framework with code I already
+  understand. If the flow ever needed to branch, loop or let the model decide the next step,
+  that's where LangGraph would come in.
+- **Structured output instead of JSON in tags.** The assistants end with JSON inside
+  `<user_data>` tags, and smaller models sometimes break the format. Today OpenAI, Gemini and
+  Ollama all accept a JSON schema and return valid JSON. I'd use that and drop the regex.
+- **Combine retrieval strategies instead of choosing one.** Over time I used three: vector
+  search with the query expanded by its topic's related terms, keyword matching, and having the
+  LLM route a query to a canonical topic. Each search used one of them. Today I'd run them
+  together, merge the results into one ranked list, and add a reranking step.
+- **Tracing.** I'd log every prompt, response, latency and cost, so a bad answer can be traced to
+  its cause.
 
 ## Known limits
 
