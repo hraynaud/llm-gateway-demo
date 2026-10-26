@@ -13,7 +13,8 @@ Demo::CLI.run do
   abort Demo::CLI.search_unsupported_message(provider) if Demo::CLI.search_unsupported_message(provider)
 
   people = JSON.parse(File.read(File.expand_path('../demo/people.json', __dir__)))
-  cache_path = SemanticSearch.cache_path_for(provider:, model: Demo::CLI.embedding_model(provider))
+  cache_path = SemanticSearch.cache_path_for(enrich_provider: provider, enrich_model: Demo::CLI.enrichment_model(provider),
+                                             embed_provider: provider, embed_model: Demo::CLI.embedding_model(provider))
   warn "Indexing #{people.size} profiles with #{provider} (first run only; cached afterwards)..." unless File.exist?(cache_path)
   search = SemanticSearch.new(people, cache_path:).index!
 

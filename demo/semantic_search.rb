@@ -8,8 +8,10 @@ require 'json'
 # similarity. `compare` also ranks the un-enriched bio to show what the
 # enrichment buys.
 class SemanticSearch
-  def self.cache_path_for(provider:, model:, dir: __dir__)
-    File.join(dir, ".index-#{"#{provider}-#{model}".gsub(/[^A-Za-z0-9._-]/, '_')}.json")
+  # One cache per model pair: switching either the enrichment or the embedding model rebuilds.
+  def self.cache_path_for(enrich_provider:, enrich_model:, embed_provider:, embed_model:, dir: __dir__)
+    slug = ->(text) { text.gsub(/[^A-Za-z0-9._-]/, '_') }
+    File.join(dir, ".index-#{slug.call("#{enrich_provider}-#{enrich_model}")}--#{slug.call("#{embed_provider}-#{embed_model}")}.json")
   end
 
   def self.cosine(a, b)

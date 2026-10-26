@@ -47,11 +47,26 @@ RSpec.describe SemanticSearch do
   end
 
   describe '.cache_path_for' do
-    it 'differs by model, so switching models never reuses incompatible vectors' do
-      a = described_class.cache_path_for(provider: 'ollama', model: 'mxbai-embed-large', dir:)
-      b = described_class.cache_path_for(provider: 'ollama', model: 'nomic-embed-text:latest', dir:)
-      expect(a).not_to eq(b)
-      expect(File.basename(b)).to eq('.index-ollama-nomic-embed-text_latest.json')
+    let(:base) do
+      { enrich_provider: 'ollama', enrich_model: 'qwen2:7b', embed_provider: 'ollama',
+        embed_model: 'nomic-embed-text:latest', dir: }
+    end
+
+    it 'names both the enrichment and the embedding model' do
+      expect(File.basename(described_class.cache_path_for(**base)))
+        .to eq('.index-ollama-qwen2_7b--ollama-nomic-embed-text_latest.json')
+    end
+
+    it 'changes when only the enrichment model changes, so enrichments are never reused across models' do
+      expect(described_class.cache_path_for(**base.merge(enrich_model: 'llama3'))).not_to eq(described_class.cache_path_for(**base))
+    end
+
+    it 'changes when only the embedding model changes' do
+      expect(described_class.cache_path_for(**base.merge(embed_model: 'mxbai-embed-large'))).not_to eq(described_class.cache_path_for(**base))
+    end
+
+    it 'matches the gitignored /demo/.index-*.json pattern' do
+      expect(File.basename(described_class.cache_path_for(**base))).to match(/\A\.index-.*\.json\z/)
     end
   end
 
