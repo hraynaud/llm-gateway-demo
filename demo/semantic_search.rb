@@ -72,7 +72,41 @@ class SemanticSearch
     end
   end
 
+  # Scores a fixed query set: where the expected people land with and without enrichment.
+  def evaluate(queries, k: 5)
+    rows = queries.map do |q|
+      vector = @embedder.embedding(q['query'])
+      enriched_rank = best_rank(rank(vector, 'vector'), q['expect'])
+      bare_rank = best_rank(rank(vector, 'bare_vector'), q['expect'])
+      { query: q['query'], difficulty: q['difficulty'], enriched_rank:, bare_rank:,
+        verdict: verdict(enriched_rank, bare_rank) }
+    end
+    { rows:, summary: summarize(rows, k) }
+  end
+
   private
+
+  # nil when none of the expected people is indexed, which the report shows as "-".
+  def best_rank(ranked, names)
+    ranked.each_with_index.filter_map { |(entry, _score), i| i + 1 if names.include?(entry['name']) }.min
+  end
+
+  def verdict(enriched, bare)
+    return 'same' if enriched == bare
+    return 'hurt' if enriched.nil?
+    return 'helped' if bare.nil?
+
+    enriched < bare ? 'helped' : 'hurt'
+  end
+
+  def summarize(rows, k)
+    hits = ->(field, limit) { rows.count { |r| r[field] && r[field] <= limit } }
+    { total: rows.size, k:,
+      enriched_hit1: hits.call(:enriched_rank, 1), enriched_hitk: hits.call(:enriched_rank, k),
+      bare_hit1: hits.call(:bare_rank, 1), bare_hitk: hits.call(:bare_rank, k),
+      helped: rows.count { |r| r[:verdict] == 'helped' }, hurt: rows.count { |r| r[:verdict] == 'hurt' },
+      same: rows.count { |r| r[:verdict] == 'same' } }
+  end
 
   def entries
     index! unless @entries

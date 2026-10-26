@@ -156,6 +156,35 @@ RSpec.describe SemanticSearch do
     end
   end
 
+  describe '#evaluate' do
+    let(:queries) do
+      [{ 'query' => 'q', 'expect' => ['Ana'], 'difficulty' => 'hard' },
+       { 'query' => 'q', 'expect' => ['Cy'], 'difficulty' => 'medium' },
+       { 'query' => 'p', 'expect' => ['Di'], 'difficulty' => 'easy' },
+       { 'query' => 'q', 'expect' => ['Zed'], 'difficulty' => 'hard' }]
+    end
+    let(:result) { table_search.evaluate(queries, k: 2) }
+
+    it 'reports the best rank of an expected person with and without enrichment' do
+      expect(result[:rows].map { |r| [r[:enriched_rank], r[:bare_rank], r[:verdict]] })
+        .to eq([[1, 2, 'helped'], [3, 1, 'hurt'], [2, 2, 'same'], [nil, nil, 'same']])
+    end
+
+    it 'keeps each query and its difficulty' do
+      expect(result[:rows].map { |r| [r[:query], r[:difficulty]] }).to eq([%w[q hard], %w[q medium], %w[p easy], %w[q hard]])
+    end
+
+    it 'summarises hits and verdicts' do
+      expect(result[:summary]).to eq(total: 4, k: 2, enriched_hit1: 1, enriched_hitk: 2, bare_hit1: 1, bare_hitk: 3,
+                                     helped: 1, hurt: 1, same: 2)
+    end
+
+    it 'takes the best rank when several people are expected' do
+      row = table_search.evaluate([{ 'query' => 'q', 'expect' => %w[Ben Ana], 'difficulty' => 'hard' }])[:rows].first
+      expect(row).to include(enriched_rank: 1, bare_rank: 2)
+    end
+  end
+
   describe 'enrichment shape' do
     it 'keeps JSON-shaped enrichment as text when the model ignores the markdown format' do
       allow(expander).to receive(:search) { { 'summary' => 'Yoga teacher', 'keywords' => ['pilates'] }.with_indifferent_access }
