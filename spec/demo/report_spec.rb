@@ -23,6 +23,8 @@ RSpec.describe Demo::Report do
   it 'formats strength in standard deviations' do
     expect(described_class.strength(1.74)).to eq('+1.7σ')
     expect(described_class.strength(-0.69)).to eq('-0.7σ')
+    expect(described_class.strength(1.46)).to eq('+1.4σ')
+    expect(described_class.strength(1.5)).to eq('+1.5σ')
   end
 
   it 'shows movement in both directions' do

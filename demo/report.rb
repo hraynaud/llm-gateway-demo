@@ -10,7 +10,8 @@ module Demo
     end
 
     def strength(z)
-      format('%+.1fσ', z)
+      # Rounds down so a value prints +1.5σ only when it clears the 1.5 cutoff.
+      format('%+.1fσ', (z * 10).floor / 10.0)
     end
 
     def movement(change)
