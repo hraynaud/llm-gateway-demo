@@ -139,7 +139,7 @@ Hannah Weiss            5 0.457 +1.4σ   3 0.452   ↓2
 2026 with AI assistance, through a spec-driven, test-first process:
 
 - `config/boot.rb`, a small shell that lets the Rails services run as plain Ruby.
-- Six fixes to latent bugs in the original code (seven `fix:` commits; one needed a follow-up), each with the spec that caught it, plus five `fix:` commits to the new demo scripts.
+- Six fixes to latent bugs in the original code (seven `fix:` commits; one needed a follow-up), each with the spec that caught it, plus six `fix:` commits to the new demo scripts.
 - Ollama adapters for the assistants, the `demo/` search, the `bin/` scripts and the test suite.
 - For `bin/search`: separate enrichment and embedding models (`EMBEDDING_MODEL_PROVIDER`), a cache per model pair, match strength in standard deviations, a stricter `--compare`, harder demo data and `--eval`.
 
