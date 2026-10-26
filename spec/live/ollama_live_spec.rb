@@ -1,4 +1,5 @@
 require 'tmpdir'
+require 'open3'
 require_relative '../../demo/semantic_search'
 
 # Opt-in: LIVE=1 bundle exec rspec spec/live
@@ -29,5 +30,12 @@ RSpec.describe 'live Ollama', :live do
       expect(results.first[:name]).to eq('Tomasz')
       expect(results.map { |r| r[:score] }).to all(be_between(-1.0, 1.0))
     end
+  end
+
+  it 'runs bin/search --eval end to end' do
+    out, err, status = Open3.capture3('bin/search', '--eval', chdir: File.expand_path('../..', __dir__))
+    expect(status).to be_success, err
+    expect(out.lines.first).to start_with('Enrichment: ')
+    expect(out).to include('enrichment helped')
   end
 end
