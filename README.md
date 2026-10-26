@@ -109,11 +109,11 @@ On my machine, with local models only (12 queries):
 | qwen2:7b | mxbai-embed-large | 11/12 | 11/12 | 0 / 0 / 12 |
 | qwen2:7b | nomic-embed-text | 11/12 | 11/12 | 1 / 0 / 11 |
 
-Two things limit the effect with local models. A small model writes weak enrichment: it tends to
+Two things likely limit the effect with local models. A small model writes weak enrichment: it tends to
 restate the bio instead of adding related ideas, and enrichment is only as good as the terms it
 adds. And newer embedding models already place related words close together, which closes much
-of the gap enrichment was built for. In January 2025 I switched from nomic-embed-text to the
-larger, higher-dimensional mxbai-embed-large (768 to 1024 dimensions) after the tuning I knew
+of the gap enrichment was built for. In January 2025 I switched from all-minilm to the
+larger, higher-dimensional mxbai-embed-large (384 to 1024 dimensions) after the tuning I knew
 about didn't help. To compare a stronger enrichment model, set `AI_PROVIDER=gemini` or
 `AI_PROVIDER=openai` and run `bin/search --eval` again.
 

@@ -128,7 +128,7 @@ flowchart TD
   M -- "--eval" --> E["demo/queries.json: best rank of the expected people<br/>hits at #1 and in the top 5; helped / hurt / same"]
   </pre>
   <ul class="notes">
-    <li>Enrichment runs once per profile for each enrichment model; a query costs one embedding call.</li>
+    <li>Enrichment runs once per profile for each enrichment-and-embedding model pair; a query costs one embedding call.</li>
     <li>Strength is measured against each query's own scores, so the cutoff works for any embedding model.</li>
     <li>Ties keep <code>people.json</code> order, so results are stable between runs.</li>
   </ul></div>
