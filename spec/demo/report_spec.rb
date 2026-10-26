@@ -49,6 +49,19 @@ RSpec.describe Demo::Report do
     it 'puts the divider first when nothing is strong' do
       expect(described_class.compare_lines([weak, dropped])[1]).to eq(described_class::DIVIDER)
     end
+
+    it 'aligns the bare and move headers with the row columns' do
+      bare_column = lines[1].index(format('%2d %.3f', rescued[:bare_rank], rescued[:bare_score]))
+      expect(lines[0].index('bare')).to eq(bare_column)
+      expect(lines[0].index('move')).to eq(lines[1].index('↑1'))
+    end
+
+    it 'never flags a weak row, even when it is marked gained' do
+      flagged = described_class.compare_lines([rescued, weak.merge(gained: true)])
+      expect(flagged[3]).to include('Ben')
+      expect(flagged[3]).not_to include('found via enrichment')
+      expect(flagged.count { |l| l.include?('found via enrichment') }).to eq(1)
+    end
   end
 
   it 'formats plain results with strength and the divider' do

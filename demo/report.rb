@@ -30,11 +30,11 @@ module Demo
     end
 
     def compare_lines(rows)
-      head = format('%-22s %-19s %-12s %s', 'name', 'enriched', 'bare', 'move')
+      head = format('%-22s %-15s %-10s %s', 'name', 'enriched', 'bare', 'move')
       body = with_divider(rows) do |r|
         line = format('%-22s %2d %.3f %-6s %2d %.3f   %-4s', r[:name], r[:enriched_rank], r[:enriched_score],
                       strength(r[:strength]), r[:bare_rank], r[:bare_score], movement(r[:rank_change])).rstrip
-        r[:gained] ? "#{line} <- found via enrichment" : line
+        r[:gained] && r[:strong] ? "#{line} <- found via enrichment" : line
       end
       [head, *body]
     end
