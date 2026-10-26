@@ -13,6 +13,76 @@ RSpec.describe Demo::CLI do
     end
   end
 
+  describe '.missing_key_message with a setting name' do
+    it 'names the setting that chose the provider' do
+      message = described_class.missing_key_message('openai', {}, setting: 'EMBEDDING_MODEL_PROVIDER')
+      expect(message).to include('EMBEDDING_MODEL_PROVIDER=openai needs OPENAI_API_KEY')
+    end
+  end
+
+  describe '.embedding_provider' do
+    it 'uses EMBEDDING_MODEL_PROVIDER when it is ollama or openai' do
+      expect(described_class.embedding_provider({ 'EMBEDDING_MODEL_PROVIDER' => 'openai' }, 'ollama')).to eq(['openai', nil])
+    end
+
+    it 'ignores case and surrounding spaces' do
+      expect(described_class.embedding_provider({ 'EMBEDDING_MODEL_PROVIDER' => ' OLLAMA ' }, 'openai')).to eq(['ollama', nil])
+    end
+
+    it 'refuses gemini and says what to use instead' do
+      name, error = described_class.embedding_provider({ 'EMBEDDING_MODEL_PROVIDER' => 'gemini' }, 'ollama')
+      expect(name).to be_nil
+      expect(error).to include("Gemini can't produce embeddings", 'EMBEDDING_MODEL_PROVIDER=ollama or openai')
+    end
+
+    it 'refuses an unknown value and names the allowed ones' do
+      name, error = described_class.embedding_provider({ 'EMBEDDING_MODEL_PROVIDER' => 'cohere' }, 'ollama')
+      expect(name).to be_nil
+      expect(error).to include('ollama or openai', '"cohere"')
+    end
+
+    it 'follows the chat provider when it can embed' do
+      expect(described_class.embedding_provider({}, 'openai')).to eq(['openai', nil])
+    end
+
+    it 'falls back to ollama when the chat provider is gemini' do
+      expect(described_class.embedding_provider({}, 'gemini')).to eq(['ollama', nil])
+    end
+
+    it 'treats an empty setting as unset' do
+      expect(described_class.embedding_provider({ 'EMBEDDING_MODEL_PROVIDER' => '' }, 'openai')).to eq(['openai', nil])
+    end
+  end
+
+  describe '.embedder_for' do
+    it('maps ollama to OllamaService') { expect(described_class.embedder_for('ollama')).to eq(OllamaService) }
+    it('maps openai to OpenaiProvider') { expect(described_class.embedder_for('openai')).to eq(OpenaiProvider) }
+    it('rejects gemini') { expect { described_class.embedder_for('gemini') }.to raise_error(KeyError) }
+  end
+
+  describe '.enrichment_model' do
+    around do |example|
+      saved = ENV.to_h.slice('OPENAI_LLM', 'GEMINI_LLM')
+      example.run
+    ensure
+      %w[OPENAI_LLM GEMINI_LLM].each { |k| saved.key?(k) ? ENV[k] = saved[k] : ENV.delete(k) }
+    end
+
+    it('uses the Ollama LLM for ollama') { expect(described_class.enrichment_model('ollama')).to eq(OllamaService::LLM) }
+
+    it 'uses OPENAI_LLM or gpt-5-mini for openai' do
+      ENV.delete('OPENAI_LLM')
+      expect(described_class.enrichment_model('openai')).to eq('gpt-5-mini')
+      ENV['OPENAI_LLM'] = 'pinned'
+      expect(described_class.enrichment_model('openai')).to eq('pinned')
+    end
+
+    it 'uses GEMINI_LLM or gemini-2.5-flash for gemini' do
+      ENV.delete('GEMINI_LLM')
+      expect(described_class.enrichment_model('gemini')).to eq('gemini-2.5-flash')
+    end
+  end
+
   describe '.search_unsupported_message' do
     it('refuses gemini') { expect(described_class.search_unsupported_message('gemini')).to include('ollama or openai') }
     it('allows ollama') { expect(described_class.search_unsupported_message('ollama')).to be_nil }

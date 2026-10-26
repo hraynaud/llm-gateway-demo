@@ -1,5 +1,6 @@
 # Deterministic, offline test environment: default provider, fake keys, no network.
 ENV.delete('AI_PROVIDER')
+ENV.delete('EMBEDDING_MODEL_PROVIDER')
 ENV['OPENAI_API_KEY'] ||= 'test-openai-key'
 ENV['GEMINI_API_KEY'] ||= 'test-gemini-key'
 

@@ -3,14 +3,15 @@
 module Demo
   module CLI
     KEYS = { 'openai' => 'OPENAI_API_KEY', 'gemini' => 'GEMINI_API_KEY' }.freeze
+    EMBEDDING_PROVIDERS = %w[ollama openai].freeze
 
     module_function
 
-    def missing_key_message(provider, env = ENV)
+    def missing_key_message(provider, env = ENV, setting: 'AI_PROVIDER')
       key = KEYS[provider]
       return unless key && env[key].to_s.empty?
 
-      "AI_PROVIDER=#{provider} needs #{key}. Export it, or unset AI_PROVIDER to use local Ollama."
+      "#{setting}=#{provider} needs #{key}. Export it, or unset #{setting} to use local Ollama."
     end
 
     def search_unsupported_message(provider)
@@ -49,6 +50,32 @@ module Demo
 
     def embedding_model(provider)
       provider == 'openai' ? ENV.fetch('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small') : OllamaService::EMBEDDING_MODEL
+    end
+
+    # bin/search picks its embedding model separately from the enrichment model (AI_PROVIDER).
+    # Returns [provider, nil], or [nil, message] when the setting can't be used.
+    def embedding_provider(env = ENV, chat_provider = AiService.current_provider)
+      requested = env['EMBEDDING_MODEL_PROVIDER'].to_s.strip.downcase
+      if requested.empty?
+        return [EMBEDDING_PROVIDERS.include?(chat_provider) ? chat_provider : 'ollama', nil]
+      end
+      return [requested, nil] if EMBEDDING_PROVIDERS.include?(requested)
+      return [nil, "Gemini can't produce embeddings here; set EMBEDDING_MODEL_PROVIDER=ollama or openai."] if requested == 'gemini'
+
+      [nil, "EMBEDDING_MODEL_PROVIDER must be ollama or openai (got #{requested.inspect})."]
+    end
+
+    def embedder_for(name)
+      { 'ollama' => OllamaService, 'openai' => OpenaiProvider }.fetch(name)
+    end
+
+    # The model each provider uses for completions, so a run can say which model enriched.
+    def enrichment_model(provider)
+      case provider
+      when 'openai' then ENV['OPENAI_LLM'] || 'gpt-5-mini'
+      when 'gemini' then ENV['GEMINI_LLM'] || 'gemini-2.5-flash'
+      else OllamaService::LLM
+      end
     end
 
     def run
