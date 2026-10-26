@@ -32,6 +32,26 @@ RSpec.describe SemanticSearch do
   let(:dir) { Dir.mktmpdir }
   let(:cache_path) { File.join(dir, 'index.json') }
 
+  # Table fixture: bios are names, enrichment is "<name>+", and every text maps to a fixed 2-D vector.
+  let(:vectors) do
+    { 'q' => [1.0, 0.0], 'p' => [0.0, 1.0],
+      'Ana' => [0.5, 1.0], "Ana\nAna+" => [1.0, 0.0],
+      'Ben' => [0.0, 1.0], "Ben\nBen+" => [1.0, 1.0],
+      'Cy' => [1.0, 0.0], "Cy\nCy+" => [0.0, 1.0],
+      'Di' => [0.0, 1.0], "Di\nDi+" => [0.0, 1.0],
+      'Ed' => [0.0, 1.0], "Ed\nEd+" => [0.0, 1.0],
+      'Fy' => [0.0, 1.0], "Fy\nFy+" => [0.0, 1.0] }
+  end
+  let(:table_embedder) do
+    table = vectors
+    Object.new.tap { |o| o.define_singleton_method(:embedding) { |text| table.fetch(text) } }
+  end
+  let(:table_expander) { Object.new.tap { |o| o.define_singleton_method(:search) { |bio| { content: "#{bio}+" } } } }
+  let(:six) { %w[Ana Ben Cy Di Ed Fy].map { |n| { 'name' => n, 'bio' => n } } }
+  let(:table_search) do
+    described_class.new(six, cache_path: File.join(dir, 'table.json'), expander: table_expander, embedder: table_embedder).index!
+  end
+
   before { allow(expander).to receive(:search) { |bio| { content: enrichments.fetch(bio) } } }
   after { FileUtils.remove_entry(dir) }
 
@@ -86,10 +106,53 @@ RSpec.describe SemanticSearch do
     end
   end
 
+  describe '.strengths' do
+    it 'measures each score in standard deviations from the query mean' do
+      z = described_class.strengths([1.0, Math.sqrt(0.5), 0.0, 0.0, 0.0, 0.0])
+      expect(z[0]).to be_within(1e-3).of(1.740)
+      expect(z[1]).to be_within(1e-3).of(1.028)
+    end
+
+    it('is all zero when every score is equal') { expect(described_class.strengths([0.1, 0.1, 0.1])).to eq([0.0, 0.0, 0.0]) }
+    it('is empty for no scores') { expect(described_class.strengths([])).to eq([]) }
+  end
+
+  describe '.strong?' do
+    it('is true at the cutoff') { expect(described_class.strong?(1.5)).to be true }
+    it('is false just below it') { expect(described_class.strong?(1.4999)).to be false }
+  end
+
+  describe '#query strength' do
+    it 'marks strong and weak matches' do
+      rows = table_search.query('q', k: 2)
+      expect(rows.map { |r| [r[:name], r[:strong]] }).to eq([['Ana', true], ['Ben', false]])
+      expect(rows.first[:strength]).to be_within(1e-3).of(1.740)
+    end
+  end
+
   describe '#compare' do
-    it 'flags a person found only because of the enrichment' do
-      expect(search.index!.compare('teach pilates', k: 1))
-        .to eq([{ name: 'Mara', enriched_rank: 1, bare_rank: 2, gained: true }])
+    it 'rescues a strong match the bare bio ranks outside the top k' do
+      row = table_search.compare('q', k: 1).first
+      expect(row).to include(name: 'Ana', enriched_rank: 1, strong: true, bare_rank: 2, rank_change: 1, gained: true)
+      expect(row[:enriched_score]).to be_within(1e-9).of(1.0)
+      expect(row[:bare_score]).to be_within(1e-3).of(0.447)
+      expect(row[:strength]).to be_within(1e-3).of(1.740)
+    end
+
+    it 'does not flag a weak match even when the bare bio ranks it outside the top k' do
+      ben = table_search.compare('q', k: 2).find { |r| r[:name] == 'Ben' }
+      expect(ben).to include(strong: false, bare_rank: 3, rank_change: 1, gained: false)
+    end
+
+    it 'reports a person enrichment moved down' do
+      cy = table_search.compare('q', k: 3).find { |r| r[:name] == 'Cy' }
+      expect(cy).to include(enriched_rank: 3, bare_rank: 1, rank_change: -2, gained: false)
+    end
+
+    it 'flags nobody when every match is weak' do
+      rows = table_search.compare('p', k: 5)
+      expect(rows.map { |r| r[:strong] }).to all(be false)
+      expect(rows.map { |r| r[:gained] }).to all(be false)
     end
   end
 

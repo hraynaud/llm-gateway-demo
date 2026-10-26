@@ -5,9 +5,13 @@ require 'json'
 # Added 2026, clean-room: enrichment-based retrieval built on the original
 # SummarizerService prompt. Each profile is enriched once by the LLM (summary
 # plus related terms), embedded, and ranked against the raw query by cosine
-# similarity. `compare` also ranks the un-enriched bio to show what the
-# enrichment buys.
+# similarity. `compare` also ranks the un-enriched bio, and flags only strong
+# matches the bio alone would have missed.
 class SemanticSearch
+  # A match is strong when its score sits this many standard deviations above the query's
+  # average. Relative on purpose: each embedding model scores on its own scale.
+  STRONG_Z = 1.5
+
   # One cache per model pair: switching either the enrichment or the embedding model rebuilds.
   def self.cache_path_for(enrich_provider:, enrich_model:, embed_provider:, embed_model:, dir: __dir__)
     slug = ->(text) { text.gsub(/[^A-Za-z0-9._-]/, '_') }
@@ -18,6 +22,20 @@ class SemanticSearch
     dot = a.zip(b).sum { |x, y| x * y }
     norms = Math.sqrt(a.sum { |x| x * x }) * Math.sqrt(b.sum { |x| x * x })
     norms.zero? ? 0.0 : dot / norms
+  end
+
+  def self.strengths(scores)
+    return [] if scores.empty?
+
+    mean = scores.sum / scores.size
+    sd = Math.sqrt(scores.sum { |s| (s - mean)**2 } / scores.size)
+    return scores.map { 0.0 } if sd < 1e-12
+
+    scores.map { |s| (s - mean) / sd }
+  end
+
+  def self.strong?(strength)
+    strength >= STRONG_Z
   end
 
   def initialize(people, cache_path:, expander: SummarizerService, embedder: AiService)
@@ -33,17 +51,24 @@ class SemanticSearch
   end
 
   def query(text, k: 5)
-    rank(@embedder.embedding(text), 'vector').first(k).map do |entry, score|
-      { name: entry['name'], score:, enrichment: entry['enrichment'] }
+    ranked = rank(@embedder.embedding(text), 'vector')
+    z = self.class.strengths(ranked.map(&:last))
+    ranked.first(k).each_with_index.map do |(entry, score), i|
+      { name: entry['name'], score:, strength: z[i], strong: self.class.strong?(z[i]), enrichment: entry['enrichment'] }
     end
   end
 
   def compare(text, k: 5)
     vector = @embedder.embedding(text)
-    bare = rank(vector, 'bare_vector').map(&:first)
-    rank(vector, 'vector').first(k).each_with_index.map do |(entry, _score), i|
-      bare_rank = bare.index(entry) + 1
-      { name: entry['name'], enriched_rank: i + 1, bare_rank:, gained: bare_rank > k }
+    enriched = rank(vector, 'vector')
+    bare = rank(vector, 'bare_vector')
+    z = self.class.strengths(enriched.map(&:last))
+    enriched.first(k).each_with_index.map do |(entry, score), i|
+      bare_index = bare.index { |other, _| other.equal?(entry) }
+      strong = self.class.strong?(z[i])
+      { name: entry['name'], enriched_rank: i + 1, enriched_score: score, strength: z[i], strong:,
+        bare_rank: bare_index + 1, bare_score: bare[bare_index][1], rank_change: bare_index - i,
+        gained: strong && bare_index + 1 > k }
     end
   end
 
